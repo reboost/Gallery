@@ -50,6 +50,10 @@
     <string name="saf_move_to">Move to…</string>
     <string name="saf_item_copied">Item copied</string>
     <string name="saf_item_moved">Item moved</string>
+    <string name="saf_select_destination">Choose destination</string>
+    <string name="saf_no_writable_locations">Add a writable location before transferring items</string>
+    <string name="saf_move_source_retained">Item copied, but the original could not be removed</string>
+    <string name="saf_partial_transfer">Transfer failed; a partial copy may remain at the destination</string>
     <string name="saf_folder">Folder</string>
     <string name="saf_image">Image</string>
     <string name="saf_video">Video</string>

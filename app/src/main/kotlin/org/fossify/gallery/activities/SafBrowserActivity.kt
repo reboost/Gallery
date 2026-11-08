@@ -56,7 +56,10 @@ class SafBrowserActivity : SimpleActivity() {
     private data class PendingTransfer(
         val action: TransferAction,
         val documentId: String,
-        val sourceParentDocumentId: String
+        val sourceParentDocumentId: String,
+        val displayName: String,
+        val mimeType: String,
+        val isDirectory: Boolean
     )
 
     private enum class TransferAction { COPY, MOVE }
@@ -67,17 +70,38 @@ class SafBrowserActivity : SimpleActivity() {
         val data = result.data
         val targetTreeUri = data?.getStringExtra(EXTRA_RESULT_TREE_URI)?.let(Uri::parse)
         val targetDocumentId = data?.getStringExtra(EXTRA_RESULT_DOCUMENT_ID)
+        val targetPathIds = data?.getStringArrayListExtra(EXTRA_RESULT_PATH_IDS).orEmpty()
         if (result.resultCode == RESULT_OK && transfer != null && targetTreeUri != null && !targetDocumentId.isNullOrBlank()) {
+            val targetLocation = SafLocationStore(this).getLocations().firstOrNull { it.treeUri == targetTreeUri }
+            if (targetLocation?.hasWriteAccess != true) {
+                toast(R.string.saf_location_unavailable)
+                return@registerForActivityResult
+            }
+            if (transfer.isDirectory && transfer.documentId in targetPathIds) {
+                toast(R.string.saf_operation_unsupported)
+                return@registerForActivityResult
+            }
             val operations = SafDocumentOperations(contentResolver)
             when (transfer.action) {
                 TransferAction.COPY -> runItemMutation(R.string.saf_item_copied) {
-                    operations.copyDocument(treeUri, transfer.documentId, targetTreeUri, targetDocumentId)
+                    operations.copyDocument(
+                        treeUri,
+                        transfer.documentId,
+                        transfer.displayName,
+                        transfer.mimeType,
+                        transfer.isDirectory,
+                        targetTreeUri,
+                        targetDocumentId
+                    )
                 }
                 TransferAction.MOVE -> runItemMutation(R.string.saf_item_moved) {
                     operations.moveDocument(
                         treeUri,
                         transfer.documentId,
                         transfer.sourceParentDocumentId,
+                        transfer.displayName,
+                        transfer.mimeType,
+                        transfer.isDirectory,
                         targetTreeUri,
                         targetDocumentId
                     )
@@ -289,12 +313,14 @@ class SafBrowserActivity : SimpleActivity() {
     }
 
     private fun onItemLongClicked(item: SafBrowserItem) {
-        if (!location.hasWriteAccess || selectDestinationMode) return
+        if (selectDestinationMode) return
         val actions = buildList {
-            if (item.supportsRename) add(ItemAction.RENAME)
-            if (item.supportsDelete) add(ItemAction.DELETE)
-            if (item.supportsCopy) add(ItemAction.COPY)
-            if (item.supportsMove) add(ItemAction.MOVE)
+            if (location.hasWriteAccess && item.supportsRename) add(ItemAction.RENAME)
+            if (location.hasWriteAccess && item.supportsDelete) add(ItemAction.DELETE)
+            if (item.supportsCopy || item is SafBrowserItem.Media) add(ItemAction.COPY)
+            if (location.hasWriteAccess && (item.supportsMove ||
+                (item is SafBrowserItem.Media && item.supportsDelete))
+            ) add(ItemAction.MOVE)
         }
         if (actions.isEmpty()) return
 
@@ -321,10 +347,40 @@ class SafBrowserActivity : SimpleActivity() {
     }
 
     private fun chooseTransferDestination(item: SafBrowserItem, action: TransferAction) {
+        val writableLocations = SafLocationStore(this).getLocations().filter { it.hasWriteAccess }
+            .filter { !itemIsDirectory(item) || it.treeUri.authority == treeUri.authority }
+        if (writableLocations.isEmpty()) {
+            toast(R.string.saf_no_writable_locations)
+            return
+        }
+
         val sourceParentId = folderStack.lastOrNull()?.documentId ?: return
-        pendingTransfer = PendingTransfer(action, item.documentId, sourceParentId)
-        destinationPicker.launch(SafBrowserActivity.createIntent(this, location, selectDestination = true))
+        val mimeType = (item as? SafBrowserItem.Media)?.let {
+            it.mimeType ?: if (it.type == SafMediaType.IMAGE) "image/*" else "video/*"
+        } ?: "application/octet-stream"
+        val transfer = PendingTransfer(
+            action,
+            item.documentId,
+            sourceParentId,
+            item.displayName,
+            mimeType,
+            item is SafBrowserItem.Directory
+        )
+        val labels = writableLocations.map { it.displayName }.toTypedArray()
+        getAlertDialogBuilder()
+            .setTitle(R.string.saf_select_destination)
+            .setItems(labels) { _, index ->
+                val destination = writableLocations.getOrNull(index) ?: return@setItems
+                pendingTransfer = transfer
+                destinationPicker.launch(
+                    SafBrowserActivity.createIntent(this, destination, selectDestination = true)
+                )
+            }
+            .setNegativeButton(org.fossify.commons.R.string.cancel, null)
+            .show()
     }
+
+    private fun itemIsDirectory(item: SafBrowserItem) = item is SafBrowserItem.Directory
 
     private fun returnSelectedFolder() {
         val currentFolder = folderStack.lastOrNull() ?: return
@@ -333,6 +389,7 @@ class SafBrowserActivity : SimpleActivity() {
             Intent()
                 .putExtra(EXTRA_RESULT_TREE_URI, treeUri.toString())
                 .putExtra(EXTRA_RESULT_DOCUMENT_ID, currentFolder.documentId)
+                .putStringArrayListExtra(EXTRA_RESULT_PATH_IDS, ArrayList(folderStack.map { it.documentId }))
         )
         finish()
     }
@@ -382,6 +439,8 @@ class SafBrowserActivity : SimpleActivity() {
                     SafItemMutationResult.Unsupported -> toast(R.string.saf_operation_unsupported)
                     SafItemMutationResult.PermissionRevoked -> toast(R.string.saf_location_unavailable)
                     SafItemMutationResult.Unavailable -> toast(R.string.saf_operation_failed)
+                    SafItemMutationResult.SourceRetained -> toast(R.string.saf_move_source_retained)
+                    SafItemMutationResult.PartialTransfer -> toast(R.string.saf_partial_transfer)
                 }
             }
         }
@@ -419,6 +478,7 @@ class SafBrowserActivity : SimpleActivity() {
         private const val EXTRA_SELECT_DESTINATION = "select_destination"
         private const val EXTRA_RESULT_TREE_URI = "result_tree_uri"
         private const val EXTRA_RESULT_DOCUMENT_ID = "result_document_id"
+        private const val EXTRA_RESULT_PATH_IDS = "result_path_ids"
         private const val KEY_FOLDER_IDS = "folder_ids"
         private const val KEY_FOLDER_NAMES = "folder_names"
 
