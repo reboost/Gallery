@@ -10,7 +10,7 @@ This file tracks planned, fork-specific work. Keep entries here until the corres
 
 ## Android Storage Access Framework (SAF)
 
-**Status:** Read-only browsing in progress. Tree-grant persistence, saved-location management, on-demand provider browsing, thumbnails, and a separate URI-based viewer are implemented; advanced metadata and mutations remain planned. See [SAF support investigation](docs/SAF_SUPPORT.md) for architecture findings and implementation constraints.
+**Status:** SAF source registration and on-demand browsing are implemented. Folder creation is available only when a writable grant and provider capability permit it; Gallery-wide integration, advanced metadata, and other mutations remain planned. See [SAF support investigation](docs/SAF_SUPPORT.md) for architecture findings and implementation constraints.
 
 ### Change constraints
 
@@ -37,7 +37,8 @@ This file tracks planned, fork-specific work. Keep entries here until the corres
 - [x] Expose SAF roots through a separate read-only browser and item adapter without replacing or rewriting the local MediaStore/filesystem pipeline.
 - [x] Load SAF thumbnails and open images/videos through content URIs with URI/metadata-based thumbnail cache signatures.
 - [ ] Add provider-backed dimensions and EXIF details, high-resolution/deep-zoom image viewing, and source-aware invalidation after future mutations.
-- [ ] Add capability-aware create, write, rename, delete, and copy/move behavior only where supported by the provider; keep unsupported actions unavailable.
+- [x] Add provider-capability-aware folder creation, gated by the exact saved write grant and `FLAG_DIR_SUPPORTS_CREATE` on the current directory.
+- [ ] Add capability-aware write, rename, delete, and copy/move behavior only where supported by the provider; keep unsupported actions unavailable.
 - [ ] Integrate SAF items with Gallery's main album/media UI, including search, sorting/grouping, favorites, filters, and album navigation.
 - [ ] Add provider-aware sharing, selection, and editing only where URI-based APIs support them.
 - [ ] Verify local media behavior remains unchanged and exercise removable/USB, SMB/CIFS, WebDAV, rclone, cloud, read-only, revoked/offline, and large-tree scenarios.

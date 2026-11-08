@@ -1,6 +1,6 @@
 # Storage Access Framework (SAF) support
 
-**Status:** Implementation in progress on `feature/saf-support-plan`. Persistent tree registration, on-demand read-only browsing, provider thumbnails, and a separate URI-based image/video viewer are implemented. Advanced metadata, Gallery-wide integration, and mutations remain planned.
+**Status:** Implementation in progress on `feature/saf-support-plan`. Persistent tree registration, on-demand browsing, provider thumbnails, a separate URI-based image/video viewer, and provider-gated folder creation are implemented. Advanced metadata, Gallery-wide integration, and other mutations remain planned.
 
 ## Implementation progress
 
@@ -19,7 +19,8 @@
 - The current image viewer uses a fit-center Glide view and the video viewer uses Android's `VideoView`. High-resolution deep zoom, EXIF/dimension details, editing, and Gallery-style viewer actions are not implemented in this increment.
 - Each opened folder is queried as one provider result set. Enumeration is on demand and off the UI thread, but provider-specific paging/limits for very large flat folders remain future work.
 - Viewer inspection confirmed that the existing Gallery flow is not a safe SAF adapter: `MediaActivity`/`MediaAdapter` and Room queries identify media by filesystem path, while the external-URI viewer path temporarily places a `content://` URI in `Medium.path` and attempts path resolution. The SAF integration must not reuse that shortcut; the browsing increment needs a distinct document identity and URI-based loading.
-- Browsing is read-only for this increment. Provider create/write/delete flags are retained for capability-aware operations later; no mutation is offered.
+- Folder creation is offered only when the saved tree grant includes write access and the currently open provider directory advertises `Document.FLAG_DIR_SUPPORTS_CREATE`. The operation re-queries the capability before calling `DocumentsContract.createDocument()` and reports revoked, unsupported, and unavailable outcomes separately.
+- Other mutations remain unavailable: file writes, rename, delete, copy, and move are not yet exposed. A provider's read-only or partial capability set must continue to hide unsupported actions.
 - The original Commons file picker, folder creation dialog, MediaStore scanner, filesystem scanner, OTG scanner, media model, and Room schema remain unchanged.
 
 The storage-selection dialog itself is provided by the pinned `org.fossify:commons:7.1.3` dependency and has no extension point for additional choices. Rather than fork or copy the upstream file picker, this increment adds the selector at Gallery's existing folder-creation entry point and delegates all local paths back to the unchanged Commons picker. This keeps SAF changes additive and avoids maintaining a fork of an upstream-owned dialog.
