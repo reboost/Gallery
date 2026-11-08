@@ -32,7 +32,6 @@ import org.fossify.gallery.saf.SafCreateFolderResult
 import org.fossify.gallery.saf.SafItemMutationResult
 import org.fossify.gallery.saf.SafLocation
 import org.fossify.gallery.saf.SafLocationStore
-import org.fossify.gallery.saf.SafMediaType
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.Future

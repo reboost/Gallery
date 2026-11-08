@@ -209,14 +209,13 @@ class SafDocumentOperations(private val contentResolver: ContentResolver) {
                 return copyResult
             }
 
-            val refreshedFlags = queryDocumentFlags(sourceTreeUri, sourceDocumentId)
-            if (refreshedFlags == null || refreshedFlags and Document.FLAG_SUPPORTS_DELETE == 0 ||
-                !DocumentsContract.deleteDocument(contentResolver, sourceUri)
-            ) {
-                SafItemMutationResult.SourceRetained
-            } else {
-                SafItemMutationResult.Completed
-            }
+            val sourceDeleted = runCatching {
+                val refreshedFlags = queryDocumentFlags(sourceTreeUri, sourceDocumentId)
+                refreshedFlags != null &&
+                    refreshedFlags and Document.FLAG_SUPPORTS_DELETE != 0 &&
+                    DocumentsContract.deleteDocument(contentResolver, sourceUri)
+            }.getOrDefault(false)
+            if (sourceDeleted) SafItemMutationResult.Completed else SafItemMutationResult.SourceRetained
         } catch (_: SecurityException) {
             SafItemMutationResult.PermissionRevoked
         } catch (_: Exception) {
