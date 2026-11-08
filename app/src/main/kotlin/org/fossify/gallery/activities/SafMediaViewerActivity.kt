@@ -4,6 +4,7 @@ import android.content.ClipData
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
+import android.net.Uri
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
@@ -15,21 +16,21 @@ import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.VideoView
 import androidx.exifinterface.media.ExifInterface
+import com.bumptech.glide.Glide
+import com.bumptech.glide.load.engine.DiskCacheStrategy
+import com.bumptech.glide.signature.ObjectKey
 import com.davemorrissey.labs.subscaleview.DecoderFactory
 import com.davemorrissey.labs.subscaleview.ImageDecoder
 import com.davemorrissey.labs.subscaleview.ImageRegionDecoder
 import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
-import com.bumptech.glide.Glide
-import com.bumptech.glide.load.engine.DiskCacheStrategy
-import com.bumptech.glide.signature.ObjectKey
 import org.fossify.commons.extensions.formatSize
 import org.fossify.commons.extensions.getAlertDialogBuilder
 import org.fossify.commons.extensions.toast
 import org.fossify.gallery.R
-import org.fossify.gallery.saf.SafBrowserItem
-import org.fossify.gallery.saf.SafMediaType
 import org.fossify.gallery.helpers.MyGlideImageDecoder
 import org.fossify.gallery.helpers.PicassoRegionDecoder
+import org.fossify.gallery.saf.SafBrowserItem
+import org.fossify.gallery.saf.SafMediaType
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
@@ -48,7 +49,7 @@ class SafMediaViewerActivity : SimpleActivity() {
     private lateinit var zoomImage: SubsamplingScaleImageView
     private lateinit var video: VideoView
     private lateinit var loading: ProgressBar
-    private lateinit var documentUri: android.net.Uri
+    private lateinit var documentUri: Uri
     private lateinit var displayName: String
     private lateinit var mimeType: String
     private var imageSize = -1L
@@ -182,6 +183,13 @@ class SafMediaViewerActivity : SimpleActivity() {
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
                 imageDetails = metadata
+                imageWidth = metadata.width
+                imageHeight = metadata.height
+                if (metadata.rotation == 90 || metadata.rotation == 270) {
+                    val width = imageWidth
+                    imageWidth = imageHeight
+                    imageHeight = width
+                }
                 val signature = ObjectKey("$documentUri|$modified|$size")
                 val metrics = resources.displayMetrics
                 val bitmapDecoder = object : DecoderFactory<ImageDecoder> {

@@ -34,7 +34,7 @@ This file tracks planned, fork-specific work. Keep entries here until the corres
 
 - [x] Add a small SAF source model/store for the selected tree URI, provider display label, and granted modes, with exact-grant removal and UI recovery by re-adding a source after revocation.
 - [x] Add provider-backed immediate-child enumeration using DocumentsContract metadata, cancellable provider queries, and on-demand folder navigation.
-- [x] Expose SAF roots through a separate read-only browser and item adapter without replacing or rewriting the local MediaStore/filesystem pipeline.
+- [x] Expose SAF roots through a separate browser and item adapter with read-only browsing retained, without replacing or rewriting the local MediaStore/filesystem pipeline.
 - [x] Load SAF thumbnails and open images/videos through content URIs with URI/metadata-based thumbnail cache signatures.
 - [x] Add high-resolution/deep-zoom image viewing through the existing tiled decoder, using document URIs and EXIF orientation.
 - [x] Show provider-backed image dimensions and available EXIF capture/camera metadata in the SAF viewer.
