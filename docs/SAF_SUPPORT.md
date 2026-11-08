@@ -5,7 +5,7 @@
 This is a long-lived, independent fork/clone. **For the foreseeable future, do not create, open, or submit pull requests for this repository**, including draft, review, or validation-only PRs. Implement and commit directly on the designated feature branch. Do not use a PR as a CI trigger or handoff. Verify work with push-triggered GitHub Actions where available and direct branch/commit inspection. Do not merge into `main` without explicit user authorization.
 
 
-**Status:** Implementation in progress on `feature/saf-support-plan`. Persistent tree registration, direct main-menu access to saved roots, on-demand browsing, provider thumbnails, a URI-based image/video viewer with tiled image zoom and available EXIF details, provider-gated create/rename/delete, and native/stream-backed media copy/move are implemented. Gallery-wide media integration, cache invalidation, multi-item editing, and recursive transfers remain planned.
+**Status:** Implementation in progress on `feature/saf-support-plan`. Persistent tree registration, direct main-menu access to saved roots, on-demand folder browsing, a SAF media grid using Gallery's existing image/video tiles, and a swipeable URI-based image/video pager with tiled image zoom and available EXIF details are implemented, alongside provider-gated create/rename/delete and native/stream-backed media copy/move. Main Gallery album integration, cache invalidation, multi-item editing, and recursive transfers remain planned.
 
 ## Android 11+ tree-picker limits
 
@@ -33,7 +33,7 @@ Reference: [Android 11 storage updates — Document access restrictions](https:/
 - Provider thumbnails load through Glide using document URIs and cache signatures derived from URI, size, and last-modified metadata. A separate SAF viewer opens large images through Gallery's existing tiled decoder using the document URI and EXIF orientation, with a Glide fallback for unsupported formats; videos use Android's `VideoView`/`ContentResolver` path. Its Share action uses `ACTION_SEND`, the document content URI, `ClipData`, and a temporary read grant; it does not try to resolve a filesystem path.
 - SAF entries remain `SafBrowserItem` values with opaque document IDs and document URIs. They are never converted into `Medium.path`, `Directory.path`, or Room rows; the existing path-oriented viewer is not used for SAF.
 - Enumeration runs on a dedicated background executor and passes a `CancellationSignal` into provider queries. Navigating to another folder or destroying the activity cancels the active query.
-- This is a separate SAF browsing surface, not yet an integration with Gallery's main album grid. Existing Gallery search, favorites, sorting/grouping, hidden/excluded-folder rules, and media selection actions do not yet apply to SAF items.
+- Opened SAF folders use a dedicated media grid built from Gallery's existing photo/video grid layouts, with document-URI thumbnails, video play affordances, and folder tiles. Tapping a media tile opens a separate SAF pager over the media items in that same folder; swiping keeps the provider URI and folder ordering intact. The browser remains a separate SAF source surface rather than an insertion into Gallery's path-based main album grid, so existing Gallery search, favorites, sorting/grouping, hidden/excluded-folder rules, and local media selection actions do not yet apply to SAF items.
 - The SAF image viewer uses Gallery's existing tiled decoder for high-resolution zoom, applies EXIF orientation, and presents available dimensions, capture date, camera make/model, file size, and modified time. It falls back to Glide for image formats the tiled decoder cannot open. The video viewer uses Android's `VideoView`; editing and Gallery-style viewer actions remain unimplemented.
 - Each opened folder is queried as one provider result set. Enumeration is on demand and off the UI thread, but provider-specific paging/limits for very large flat folders remain future work.
 - Viewer inspection confirmed that the existing Gallery flow is not a safe SAF adapter: `MediaActivity`/`MediaAdapter` and Room queries identify media by filesystem path, while the external-URI viewer path temporarily places a `content://` URI in `Medium.path` and attempts path resolution. The SAF integration must not reuse that shortcut; the browsing increment needs a distinct document identity and URI-based loading.
@@ -44,6 +44,14 @@ Reference: [Android 11 storage updates — Document access restrictions](https:/
 - The original Commons file picker, folder creation dialog, MediaStore scanner, filesystem scanner, OTG scanner, media model, and Room schema remain unchanged.
 
 The storage-selection dialog itself is provided by the pinned `org.fossify:commons:7.1.3` dependency and has no extension point for additional choices. Rather than fork or copy the upstream file picker, this increment adds the selector at Gallery's existing folder-creation entry point and delegates all local paths back to the unchanged Commons picker. This keeps SAF changes additive and avoids maintaining a fork of an upstream-owned dialog.
+
+### SAF media grid and pager increment
+
+- The SAF browser now uses Gallery's existing square photo and video grid item layouts inside a grid layout manager. Folder entries use the photo tile as a folder tile; image/video thumbnails continue to load by document URI with URI/size/modified cache signatures, and video tiles retain the play indicator.
+- A media tile opens a folder-scoped pager backed by AndroidX ViewPager. Its ordered page list contains only SAF document URIs and provider metadata; no item is converted to `Medium.path`, `Directory.path`, or a Room row.
+- The pager retains the existing SAF image pipeline: EXIF orientation, the Gallery tiled decoder for deep zoom, a Glide fallback, image details, video playback, and URI-granted sharing. Adjacent pages are loaded on demand and released/cancelled when they leave the pager's off-screen window.
+- Returning from the viewer returns to the existing browser activity instance, retaining its folder and grid scroll position. The pager also saves the current media index across activity recreation.
+- This is a SAF-specific gallery experience within the saved-location browser. It deliberately does not alter the local Gallery album pipeline; main-album integration, SAF search/sort/grouping/favorites/selection, and source-aware cache invalidation remain future increments.
 
 ## Goal
 

@@ -17,12 +17,13 @@ import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.activity.addCallback
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import org.fossify.commons.extensions.getAlertDialogBuilder
 import org.fossify.commons.extensions.toast
 import org.fossify.gallery.R
+import org.fossify.gallery.extensions.config
 import org.fossify.gallery.saf.SafBrowseResult
 import org.fossify.gallery.saf.SafBrowserAdapter
 import org.fossify.gallery.saf.SafBrowserItem
@@ -51,6 +52,7 @@ class SafBrowserActivity : SimpleActivity() {
     private var queryTask: Future<*>? = null
     private var cancellationSignal: CancellationSignal? = null
     private var adapter: SafBrowserAdapter? = null
+    private var visibleItems: List<SafBrowserItem> = emptyList()
     private var selectDestinationMode = false
     private var pendingTransfer: PendingTransfer? = null
 
@@ -151,7 +153,12 @@ class SafBrowserActivity : SimpleActivity() {
         executor = Executors.newSingleThreadExecutor()
         buildContent()
         adapter = SafBrowserAdapter(this, ::onItemClicked, ::onItemLongClicked)
-        recyclerView.layoutManager = LinearLayoutManager(this)
+        val columnCount = config.mediaColumnCnt.coerceAtLeast(1)
+        recyclerView.layoutManager = GridLayoutManager(this, columnCount)
+        recyclerView.addItemDecoration(
+            SafGridSpacingItemDecoration(columnCount, config.thumbnailSpacing, config.fileRoundedCorners)
+        )
+        recyclerView.setHasFixedSize(true)
         recyclerView.adapter = adapter
         refreshLayout.setOnRefreshListener { loadChildren() }
         onBackPressedDispatcher.addCallback(this) { navigateUp() }
@@ -279,6 +286,8 @@ class SafBrowserActivity : SimpleActivity() {
         title.text = folderStack.last().displayName
         loading.visibility = View.VISIBLE
         empty.visibility = View.GONE
+        visibleItems = emptyList()
+        adapter?.submitItems(emptyList())
         refreshLayout.isRefreshing = false
         val parentId = folderStack.last().documentId
         createFolderButton.visibility = View.GONE
@@ -296,6 +305,7 @@ class SafBrowserActivity : SimpleActivity() {
                 chooseFolderButton.visibility = if (selectDestinationMode && canCreateFolder && result is SafBrowseResult.Success) View.VISIBLE else View.GONE
                 when (result) {
                     is SafBrowseResult.Success -> {
+                        visibleItems = result.items
                         adapter?.submitItems(result.items)
                         if (result.items.isEmpty()) showEmptyState(R.string.saf_no_supported_media)
                     }
@@ -498,7 +508,13 @@ class SafBrowserActivity : SimpleActivity() {
                 folderStack.add(Folder(item.documentId, item.displayName))
                 loadChildren()
             }
-            is SafBrowserItem.Media -> startActivity(SafMediaViewerActivity.createIntent(this, item))
+            is SafBrowserItem.Media -> {
+                val mediaItems = visibleItems.filterIsInstance<SafBrowserItem.Media>()
+                val position = mediaItems.indexOfFirst { it.documentUri == item.documentUri }
+                if (position >= 0) {
+                    startActivity(SafMediaViewerActivity.createIntent(this, mediaItems, position))
+                }
+            }
         }
     }
 
@@ -512,6 +528,7 @@ class SafBrowserActivity : SimpleActivity() {
     }
 
     private fun showEmptyState(message: Int) {
+        visibleItems = emptyList()
         adapter?.submitItems(emptyList())
         empty.setText(message)
         empty.visibility = View.VISIBLE

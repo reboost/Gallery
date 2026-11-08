@@ -6,7 +6,7 @@ This file tracks planned, fork-specific work. Keep entries here until the corres
 
 ## Android Storage Access Framework (SAF)
 
-**Status:** SAF registration and on-demand browsing, a main-menu entry for saved roots, provider-gated create/rename/delete, native and stream-backed media copy/move, URI sharing, tiled image viewing, and available image details are implemented. Gallery-wide media integration, cache invalidation, multi-item editing, and recursive transfers remain planned. See [SAF support investigation](docs/SAF_SUPPORT.md) for architecture findings and implementation constraints.
+**Status:** SAF registration, on-demand folder browsing, a media thumbnail grid, a swipeable URI-based image/video pager, provider-gated create/rename/delete, native and stream-backed media copy/move, URI sharing, tiled image viewing, and available image details are implemented. Main Gallery album integration, cache invalidation, multi-item editing, and recursive transfers remain planned. See [SAF support investigation](docs/SAF_SUPPORT.md) for architecture findings and implementation constraints.
 
 ### Change constraints
 
@@ -26,6 +26,13 @@ This file tracks planned, fork-specific work. Keep entries here until the corres
 - [x] Persist each selected tree as a Gallery source record separately from the local destination path; selecting it does not copy files or put a content URI in a filesystem path.
 - [ ] Connect registered SAF sources to Gallery media discovery and album navigation.
 - [x] Allow read-only roots to be browsed in a separate SAF browser; offer folder creation, rename, and delete only when the saved write grant and provider flags permit each operation.
+
+### Gallery grid and pager
+
+- [x] Render SAF folders and image/video documents in a grid using Gallery's existing photo/video grid item layouts and URI-backed Glide thumbnails.
+- [x] Preserve video play affordances and folder navigation within the SAF browser; keep document URI ordering identical between the grid and viewer.
+- [x] Open the current folder's media items in a swipeable SAF pager that retains URI identity, high-resolution tiled image zoom, video playback, available image details, and URI-granted sharing.
+- [x] Preserve the browser activity and its scroll position when returning from the pager; keep pager position across viewer recreation.
 
 ### Implementation work
 
