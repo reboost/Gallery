@@ -102,15 +102,6 @@ Keep the current local-folder workflow intact. The new **Other locations…** ac
 
 ### 2. Select and persist the exact tree grant
 
-
-Do not replace the existing MediaStore scanner with SAF.
-
-MediaStore is already the efficient, permission-aware source for the device's normal media library. It should continue to populate ordinary local albums without forcing users to select folders manually. SAF should add user-selected document trees, including providers that are not represented in MediaStore.
-
-For the first UI increment, keep the current local-folder workflow and add an explicit **Other location / Document provider** action that launches the system tree picker. Reconsider replacing the custom picker only after the SAF flow is complete and the local UX has been evaluated.
-
-### 2. Select and persist the exact tree grant
-
 Use `Intent.ACTION_OPEN_DOCUMENT_TREE` for album roots. `ACTION_OPEN_DOCUMENT` selects one document and is not sufficient for browsing a folder hierarchy.
 
 On the picker result:
