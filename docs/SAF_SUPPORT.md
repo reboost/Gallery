@@ -52,7 +52,56 @@ The central mismatch is that a document URI is an opaque provider reference, not
 
 ## Recommended design
 
+### Keep the implementation additive and easy to rebase
+
+The fork should add SAF without turning this feature into a storage-layer rewrite. Upstream Fossify changes are likely to continue touching the existing media pipeline, so keep the overlap with those files as small as possible.
+
+- Put tree selection, persisted grants, document-provider queries, provider metadata, and capability checks in a small SAF-specific package (for example, a package dedicated to SAF under the existing app source tree). Keep provider-specific logic out of generic helpers.
+- Leave the current MediaStore scanner, local filesystem enumeration, path-based local models, and OTG implementation in place. Add SAF as a separate source and connect it through the narrowest required integration points.
+- Prefer a small adapter at the existing Gallery boundary over changing every caller to understand document-provider APIs. Do not introduce a broad, generic storage framework or rewrite the existing path-based pipeline as a prerequisite.
+- Keep existing local database identities and path preferences valid. Prefer separate additive persistence for SAF roots and provider-backed metadata. If a shared media model or Room schema must change, add only the minimum source identity needed and use one focused additive migration; never store a document URI in a field that promises to be a filesystem path.
+- Reuse the existing AndroidX DocumentFile dependency and platform APIs such as ContentResolver and DocumentsContract. Add another dependency only if a concrete requirement cannot be met by what is already present.
+- Avoid unrelated renames, formatting churn, utility extraction, and broad refactors. Touch existing upstream-owned files only for the small UI, discovery, and presentation hooks that are actually required.
+
+### Agreed UI entry point and behavior
+
+Use the storage-selection UI that already exists in the app:
+
+**Create new folder → Select storage**
+
+The dialog currently offers **Internal** and **SD Card**. Keep both options and their existing behavior unchanged, and add **Other locations…** in the same dialog.
+
+1. **Other locations…** launches Android's system folder picker with ACTION_OPEN_DOCUMENT_TREE. The system picker is the place where users choose a local or remote document provider, such as a USB, SMB/CIFS, WebDAV, rclone, or cloud provider.
+2. When the user selects a tree, persist the exact URI and only the grant modes returned by Android. Do not widen access to a parent or ancestor directory.
+3. Add the selected root to a **Previously added locations** section in the storage selector. Selecting a saved entry reuses its persisted permission instead of asking the user to pick it again.
+4. Register the selected tree as a Gallery source so its media can be discovered and browsed in the Gallery. Merely selecting a destination in the folder-creation flow must not copy files or be mistaken for adding media to the library; source registration must be explicit in the implementation.
+5. Keep browsing separate from mutation capability. A read-only provider is still a valid Gallery source. In the **Create new folder** flow, allow creation only when the selected destination directory advertises directory-creation support; otherwise disable the action and explain that the provider is read-only or does not support that operation.
+
+The intended selector shape is:
+
+```text
+Select storage
+  Internal
+  SD Card
+  Other locations…
+
+Previously added locations
+  NAS / Remote storage
+  USB storage
+```
+
+The labels above are examples. Use a provider-supplied display name when available and retain the opaque tree URI as the internal identity. A display label must never be used as a unique key.
+
 ### 1. Keep MediaStore and add SAF as a separate source
+
+Do not replace the existing MediaStore scanner with SAF.
+
+MediaStore is already the efficient, permission-aware source for the device's normal media library. It should continue to populate ordinary local albums without forcing users to select folders manually. SAF should add user-selected document trees, including providers that are not represented in MediaStore.
+
+Keep the current local-folder workflow intact. The new **Other locations…** action is an additive entry point; it must not require removing or redesigning the existing local picker.
+
+### 2. Select and persist the exact tree grant
+
 
 Do not replace the existing MediaStore scanner with SAF.
 
@@ -68,10 +117,11 @@ On the picker result:
 
 1. Read the returned tree URI and the read/write grant flags from the result intent.
 2. Persist only the flags actually granted by the system with `ContentResolver.takePersistableUriPermission()`.
-3. Store the exact selected tree URI and grant modes as a provider source in app state/database.
-4. Restore sources on startup by checking persisted grants; handle missing, revoked, moved, or temporarily unavailable roots and let users remove a source, releasing its grant.
+3. Store the exact selected tree URI and grant modes as a provider source, including a display label for the saved-location list.
+4. Add the saved root to **Previously added locations** and make it available to Gallery's source discovery.
+5. Restore saved roots on startup by checking persisted grants. Handle missing, revoked, moved, or temporarily unavailable roots and let users remove a source, releasing its grant.
 
-Do not silently widen the grant to a parent or ancestor directory. The selected tree is the user's access boundary.
+Do not silently widen the grant to a parent or ancestor directory. The selected tree is the user's access boundary. Re-selecting a saved root must reuse its existing grant rather than launch the picker again.
 
 ### 3. Use document IDs and content URIs end-to-end
 
@@ -118,11 +168,11 @@ Do not overload path strings with fake paths such as `/content:/...`. The #966 r
 
 ## Suggested implementation order
 
-1. **Source and permission foundation:** model a selected tree, request/persist/release exact grants, list a selected root, and handle revoked or unavailable grants.
-2. **Read-only provider browsing:** enumerate media and subfolders on demand, persist source-aware identities, and show provider-backed albums without changing the MediaStore path.
-3. **Viewing pipeline:** thumbnails, image viewing, video playback, metadata and cache invalidation for document URIs.
+1. **Storage selector and source registration:** add **Other locations…** to the existing Select storage dialog, persist the exact tree grant, and list previously added roots. Keep Internal and SD Card behavior unchanged.
+2. **Read-only provider browsing:** add isolated SAF enumeration and source identity, load folders on demand, and expose provider-backed albums without changing the MediaStore/local scanner.
+3. **Viewing pipeline:** thumbnails, image viewing, video playback, metadata, and cache invalidation for document URIs.
 4. **Gallery features:** favorites, search, filters, sorting/grouping, hidden/excluded folders, duplicate/stale-index behavior for provider sources.
-5. **Capability-aware writes:** save-as, overwrite, create, rename, copy/move and delete, each gated by provider support.
+5. **Capability-aware writes:** create folders, save-as, overwrite, rename, copy/move, and delete, each gated by provider support.
 6. **UX and hardening:** provider management/removal, permission recovery, offline/error states, progress/cancellation, and large-tree performance.
 
 ## Validation matrix

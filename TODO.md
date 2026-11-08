@@ -4,15 +4,33 @@ This file tracks planned, fork-specific work. Keep entries here until the corres
 
 ## Android Storage Access Framework (SAF)
 
-**Status:** Planned. See [SAF support investigation](docs/SAF_SUPPORT.md) for upstream research, current architecture findings, and the proposed design.
+**Status:** Planned. See [SAF support investigation](docs/SAF_SUPPORT.md) for upstream research, architecture findings, UI flow, and implementation constraints.
 
-- [ ] Introduce a source-aware media identity so filesystem paths and SAF document URIs remain distinct; do not turn a `content://` URI into a `java.io.File` path.
-- [ ] Add a system folder-selection flow using `ACTION_OPEN_DOCUMENT_TREE`; persist only the read/write URI grants returned by the picker and retain the exact user-selected tree.
-- [ ] Store and restore selected provider roots, including permission revocation, moved/deleted roots, offline providers, and user-initiated removal.
-- [ ] Add cancellable, background SAF directory and media enumeration using document-provider metadata; keep the existing MediaStore/local-filesystem path intact.
-- [ ] Integrate provider-backed folders into album navigation, filtering, sorting, favorites, search, and persisted media metadata without assuming filesystem paths or that size/date metadata is always available.
-- [ ] Load images, video, thumbnails, and EXIF metadata from document URIs through provider streams or file descriptors.
-- [ ] Add capability-aware provider operations. Gate overwrite, create, rename, delete, and copy/move on the selected document's advertised flags; handle read-only and partially supported providers explicitly.
-- [ ] Refresh the media index and image/thumbnail caches after provider-backed edits and mutations.
-- [ ] Verify performance and correctness with local storage, removable storage, USB, SMB/CIFS, WebDAV, rclone, cloud providers, read-only providers, revoked grants, disconnected/offline providers, and large directory trees.
-- [ ] Document Android 11+ picker restrictions (including storage roots, Downloads, Android/data, and Android/obb) so these are not misreported as general SAF failures.
+### Change constraints
+
+- Keep SAF additive and isolated. Put provider-specific selection, permission, enumeration, and capability code in a small SAF-specific package.
+- Leave the existing MediaStore scanner, local filesystem scanner, local path semantics, and current OTG implementation intact.
+- Integrate SAF at the smallest necessary boundaries; do not refactor or rename unrelated upstream classes, utilities, models, or database structures.
+- Keep filesystem paths and document URIs as distinct identities. Never encode a content URI as a fake filesystem path.
+- Prefer a separate, additive SAF persistence layer. Change existing media models or Room entities only where the feature demonstrably requires it, using a focused migration.
+- Reuse the existing AndroidX DocumentFile dependency and platform APIs unless implementation proves another dependency is necessary.
+
+### Agreed entry point and user flow
+
+- [ ] Extend the existing **Select storage** dialog opened from **Create new folder** with **Other locations…**; keep **Internal** and **SD Card** unchanged.
+- [ ] Launch the Android system folder picker from **Other locations…** using ACTION_OPEN_DOCUMENT_TREE. Persist the exact tree grant returned by Android.
+- [ ] Show successfully added roots in a **Previously added locations** section so they can be selected again without reopening the picker.
+- [ ] Register a selected tree as a Gallery source as well as a selectable location; selecting it must not copy files or pretend the provider has a filesystem path.
+- [ ] Allow read-only roots to be browsed. Enable folder creation or other mutations only when the selected document advertises the required capability.
+
+### Implementation work
+
+- [ ] Add a small SAF source model/store for the selected tree URI, display label, and persisted grant modes; handle removal, revoked permissions, and unavailable providers.
+- [ ] Add provider-backed folder and media enumeration using DocumentsContract metadata, performed in cancellable background work and loaded on demand.
+- [ ] Expose SAF media through a narrow adapter at the existing Gallery boundary without replacing or rewriting the local MediaStore/filesystem pipeline.
+- [ ] Load image/video content, thumbnails, and EXIF metadata through content URIs, with source-aware cache identity and invalidation.
+- [ ] Add capability-aware create, write, rename, delete, and copy/move behavior only where supported by the provider; keep unsupported actions unavailable.
+- [ ] Verify local media behavior remains unchanged and exercise removable/USB, SMB/CIFS, WebDAV, rclone, cloud, read-only, revoked/offline, and large-tree scenarios.
+- [ ] Document Android 11+ picker restrictions, including internal/SD storage roots, Downloads, Android/data, and Android/obb.
+
+Do not broaden the work into a general storage rewrite. Keep each integration change small enough to review and rebase cleanly against upstream Fossify updates.
