@@ -10,7 +10,7 @@ This file tracks planned, fork-specific work. Keep entries here until the corres
 
 ## Android Storage Access Framework (SAF)
 
-**Status:** SAF source registration and on-demand browsing are implemented. Folder creation is available only when a writable grant and provider capability permit it; Gallery-wide integration, advanced metadata, and other mutations remain planned. See [SAF support investigation](docs/SAF_SUPPORT.md) for architecture findings and implementation constraints.
+**Status:** SAF source registration, on-demand browsing, provider-gated create/rename/delete, URI sharing, tiled image viewing, and available image details are implemented. Gallery-wide integration, cache invalidation, and further file operations remain planned. See [SAF support investigation](docs/SAF_SUPPORT.md) for architecture findings and implementation constraints.
 
 ### Change constraints
 
