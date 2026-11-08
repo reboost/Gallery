@@ -14,6 +14,11 @@ import android.widget.MediaController
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.VideoView
+import androidx.exifinterface.media.ExifInterface
+import com.davemorrissey.labs.subscaleview.DecoderFactory
+import com.davemorrissey.labs.subscaleview.ImageDecoder
+import com.davemorrissey.labs.subscaleview.ImageRegionDecoder
+import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.bumptech.glide.signature.ObjectKey
@@ -21,14 +26,22 @@ import org.fossify.commons.extensions.toast
 import org.fossify.gallery.R
 import org.fossify.gallery.saf.SafBrowserItem
 import org.fossify.gallery.saf.SafMediaType
+import org.fossify.gallery.helpers.MyGlideImageDecoder
+import org.fossify.gallery.helpers.PicassoRegionDecoder
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+import java.util.concurrent.Future
 
 class SafMediaViewerActivity : SimpleActivity() {
     private lateinit var image: ImageView
+    private lateinit var zoomImage: SubsamplingScaleImageView
     private lateinit var video: VideoView
     private lateinit var loading: ProgressBar
     private lateinit var documentUri: android.net.Uri
     private lateinit var displayName: String
     private lateinit var mimeType: String
+    private val imageExecutor: ExecutorService = Executors.newSingleThreadExecutor()
+    private var imageLoadTask: Future<*>? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -49,14 +62,7 @@ class SafMediaViewerActivity : SimpleActivity() {
         val size = intent.getLongExtra(EXTRA_SIZE, -1L)
         val modified = intent.getLongExtra(EXTRA_MODIFIED, 0L)
         when (mediaType) {
-            SafMediaType.IMAGE.name -> {
-                image.visibility = View.VISIBLE
-                Glide.with(this).load(documentUri)
-                    .signature(ObjectKey("$documentUri|$modified|$size"))
-                    .diskCacheStrategy(DiskCacheStrategy.RESOURCE)
-                    .fitCenter()
-                    .into(image)
-            }
+            SafMediaType.IMAGE.name -> loadImage(size, modified)
             SafMediaType.VIDEO.name -> {
                 video.visibility = View.VISIBLE
                 loading.visibility = View.VISIBLE
@@ -118,6 +124,11 @@ class SafMediaViewerActivity : SimpleActivity() {
             scaleType = ImageView.ScaleType.FIT_CENTER
             visibility = View.GONE
         }
+        zoomImage = SubsamplingScaleImageView(this).apply {
+            visibility = View.GONE
+            setBackgroundColor(Color.BLACK)
+        }
+        frame.addView(zoomImage, FrameLayout.LayoutParams(-1, -1))
         frame.addView(image, FrameLayout.LayoutParams(-1, -1))
         video = VideoView(this).apply { visibility = View.GONE }
         frame.addView(video, FrameLayout.LayoutParams(-1, -1))
@@ -127,6 +138,81 @@ class SafMediaViewerActivity : SimpleActivity() {
         root.addView(frame, LinearLayout.LayoutParams(-1, 0, 1f))
         setContentView(root)
     }
+
+    private fun loadImage(size: Long, modified: Long) {
+        loading.visibility = View.VISIBLE
+        image.visibility = View.GONE
+        zoomImage.visibility = View.GONE
+        imageLoadTask?.cancel(true)
+        imageLoadTask = imageExecutor.submit {
+            val rotation = readImageRotation()
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                val signature = ObjectKey("$documentUri|$modified|$size")
+                val metrics = resources.displayMetrics
+                val bitmapDecoder = object : DecoderFactory<ImageDecoder> {
+                    override fun make(): ImageDecoder = MyGlideImageDecoder(rotation, signature)
+                }
+                val regionDecoder = object : DecoderFactory<ImageRegionDecoder> {
+                    override fun make(): ImageRegionDecoder = PicassoRegionDecoder(
+                        true,
+                        metrics.widthPixels,
+                        metrics.heightPixels,
+                        -1
+                    )
+                }
+                zoomImage.apply {
+                    bitmapDecoderFactory = bitmapDecoder
+                    regionDecoderFactory = regionDecoder
+                    setMaxTileSize(4096)
+                    setMinimumTileDpi(-1)
+                    maxScale = 10f
+                    orientation = rotation
+                    onImageEventListener = object : SubsamplingScaleImageView.OnImageEventListener {
+                        override fun onReady() {
+                            loading.visibility = View.GONE
+                            image.visibility = View.GONE
+                        }
+
+                        override fun onImageLoadError(e: Exception) {
+                            loading.visibility = View.GONE
+                            zoomImage.visibility = View.GONE
+                            image.visibility = View.VISIBLE
+                            Glide.with(this@SafMediaViewerActivity)
+                                .load(documentUri)
+                                .signature(signature)
+                                .diskCacheStrategy(DiskCacheStrategy.RESOURCE)
+                                .fitCenter()
+                                .into(image)
+                        }
+
+                        override fun onImageRotation(degrees: Int) = Unit
+
+                        override fun onUpEvent() = Unit
+                    }
+                    visibility = View.VISIBLE
+                    setImage(documentUri.toString())
+                }
+            }
+        }
+    }
+
+    private fun readImageRotation(): Int = runCatching {
+        contentResolver.openInputStream(documentUri)?.use { input ->
+            val orientation = ExifInterface(input).getAttributeInt(
+                ExifInterface.TAG_ORIENTATION,
+                ExifInterface.ORIENTATION_NORMAL
+            )
+            when (orientation) {
+                ExifInterface.ORIENTATION_ROTATE_90,
+                ExifInterface.ORIENTATION_TRANSVERSE -> 90
+                ExifInterface.ORIENTATION_ROTATE_180 -> 180
+                ExifInterface.ORIENTATION_ROTATE_270,
+                ExifInterface.ORIENTATION_TRANSPOSE -> 270
+                else -> 0
+            }
+        } ?: 0
+    }.getOrDefault(0)
 
     private fun shareMedia() {
         val shareIntent = Intent(Intent.ACTION_SEND).apply {
@@ -139,8 +225,11 @@ class SafMediaViewerActivity : SimpleActivity() {
     }
 
     override fun onDestroy() {
+        imageLoadTask?.cancel(true)
+        imageExecutor.shutdownNow()
         if (::video.isInitialized) video.stopPlayback()
         if (::image.isInitialized) Glide.with(this).clear(image)
+        if (::zoomImage.isInitialized) zoomImage.recycle()
         super.onDestroy()
     }
 
