@@ -1,8 +1,8 @@
 package org.fossify.gallery.activities
 
+import android.app.Activity
 import android.content.ClipData
 import android.content.Intent
-import android.app.Activity
 import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
