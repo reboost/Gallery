@@ -8,6 +8,7 @@ import android.os.CancellationSignal
 import android.provider.DocumentsContract
 import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ProgressBar
@@ -94,7 +95,7 @@ class SafBrowserActivity : SimpleActivity() {
             text = "‹"
             textSize = 32f
             gravity = Gravity.CENTER
-            contentDescription = getString(R.string.back)
+            contentDescription = getString(R.string.saf_back)
             setOnClickListener { navigateUp() }
         }
         header.addView(back, LinearLayout.LayoutParams(48.dp(), 56.dp()))

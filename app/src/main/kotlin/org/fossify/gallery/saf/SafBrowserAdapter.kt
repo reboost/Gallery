@@ -1,7 +1,6 @@
 package org.fossify.gallery.saf
 
 import android.content.Context
-import android.graphics.Typeface
 import android.view.Gravity
 import android.view.ViewGroup
 import android.widget.ImageView

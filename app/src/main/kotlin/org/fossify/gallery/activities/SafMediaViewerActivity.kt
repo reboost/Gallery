@@ -3,7 +3,6 @@ package org.fossify.gallery.activities
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
-import android.net.Uri
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
@@ -81,14 +80,14 @@ class SafMediaViewerActivity : SimpleActivity() {
             id = VIEWER_BACK
             text = "‹"
             textSize = 32f
-            textColor = Color.WHITE
+            setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
-            contentDescription = getString(R.string.back)
+            contentDescription = getString(R.string.saf_back)
         }
         header.addView(back, LinearLayout.LayoutParams(56.dp(), 56.dp()))
         val title = TextView(this).apply {
             id = VIEWER_TITLE
-            textColor = Color.WHITE
+            setTextColor(Color.WHITE)
             textSize = 16f
             maxLines = 1
             ellipsize = android.text.TextUtils.TruncateAt.END

@@ -20,6 +20,7 @@
     <string name="saf_persistable_read_permission_required">The selected location did not grant persistent read access</string>
     <string name="saf_location_added">Location added to Gallery sources</string>
     <string name="saf_location_unavailable">This location is unavailable or its access permission was revoked</string>
+    <string name="saf_back">Back</string>
     <string name="saf_folder">Folder</string>
     <string name="saf_image">Image</string>
     <string name="saf_video">Video</string>
