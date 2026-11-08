@@ -66,41 +66,47 @@ class SafDocumentEnumerator(private val contentResolver: ContentResolver) {
             val cursor = contentResolver.query(childrenUri, projection, null, null, null, cancellationSignal)
                 ?: return SafBrowseResult.Unavailable
 
-            val items = cursor.use {
-                val idIndex = it.getColumnIndexOrThrow(Document.COLUMN_DOCUMENT_ID)
-                val nameIndex = it.getColumnIndex(Document.COLUMN_DISPLAY_NAME)
-                val mimeIndex = it.getColumnIndex(Document.COLUMN_MIME_TYPE)
-                val sizeIndex = it.getColumnIndex(Document.COLUMN_SIZE)
-                val modifiedIndex = it.getColumnIndex(Document.COLUMN_LAST_MODIFIED)
-                val flagsIndex = it.getColumnIndex(Document.COLUMN_FLAGS)
+            val items = cursor.use { resultCursor ->
+                val idIndex = resultCursor.getColumnIndexOrThrow(Document.COLUMN_DOCUMENT_ID)
+                val nameIndex = resultCursor.getColumnIndex(Document.COLUMN_DISPLAY_NAME)
+                val mimeIndex = resultCursor.getColumnIndex(Document.COLUMN_MIME_TYPE)
+                val sizeIndex = resultCursor.getColumnIndex(Document.COLUMN_SIZE)
+                val modifiedIndex = resultCursor.getColumnIndex(Document.COLUMN_LAST_MODIFIED)
+                val flagsIndex = resultCursor.getColumnIndex(Document.COLUMN_FLAGS)
                 val documents = ArrayList<SafBrowserItem>()
 
-                while (it.moveToNext()) {
+                while (resultCursor.moveToNext()) {
                     cancellationSignal.throwIfCanceled()
-                    val documentId = it.getString(idIndex)?.takeIf(String::isNotEmpty) ?: continue
-                    val displayName = nameIndex.takeIf { index -> index >= 0 }
-                        ?.let(it::getString)
+                    val documentId = resultCursor.getString(idIndex)?.takeIf(String::isNotEmpty) ?: continue
+                    val displayName = nameIndex
+                        .takeIf { it >= 0 && !resultCursor.isNull(it) }
+                        ?.let(resultCursor::getString)
                         ?.takeIf(String::isNotBlank)
                         ?: "Unnamed document"
                     if (displayName.startsWith(".")) {
                         continue
                     }
 
-                    val mimeType = mimeIndex.takeIf { index -> index >= 0 }?.let(it::getString)
+                    val mimeType = mimeIndex
+                        .takeIf { it >= 0 && !resultCursor.isNull(it) }
+                        ?.let(resultCursor::getString)
                     val documentUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, documentId)
                     if (mimeType == Document.MIME_TYPE_DIR) {
-                        val flags = flagsIndex.takeIf { index -> index >= 0 && !it.isNull(index) }
-                            ?.let(it::getInt)
+                        val flags = flagsIndex
+                            .takeIf { it >= 0 && !resultCursor.isNull(it) }
+                            ?.let(resultCursor::getInt)
                             ?: 0
                         documents.add(SafBrowserItem.Directory(documentId, displayName, documentUri, flags))
                     } else {
                         val mediaType = classifyMedia(mimeType, displayName) ?: continue
-                        val size = sizeIndex.takeIf { index -> index >= 0 && !it.isNull(index) }
-                            ?.let(it::getLong)
-                            ?.takeIf { value -> value >= 0L }
-                        val lastModified = modifiedIndex.takeIf { index -> index >= 0 && !it.isNull(index) }
-                            ?.let(it::getLong)
-                            ?.takeIf { value -> value > 0L }
+                        val size = sizeIndex
+                            .takeIf { it >= 0 && !resultCursor.isNull(it) }
+                            ?.let(resultCursor::getLong)
+                            ?.takeIf { it >= 0L }
+                        val lastModified = modifiedIndex
+                            .takeIf { it >= 0 && !resultCursor.isNull(it) }
+                            ?.let(resultCursor::getLong)
+                            ?.takeIf { it > 0L }
                         documents.add(
                             SafBrowserItem.Media(
                                 documentId, displayName, documentUri, mimeType, size, lastModified, mediaType
