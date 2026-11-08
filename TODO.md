@@ -2,11 +2,7 @@
 
 This file tracks planned, fork-specific work. Keep entries here until the corresponding behavior is implemented and verified.
 
-## Repository workflow
-
-- Never create, open, or use a pull request for this project at any stage. Work and commit directly on the designated feature branch.
-- Verify changes using push-triggered GitHub Actions and direct branch/commit inspection. Do not introduce a PR-based handoff or validation requirement.
-- Do not merge into `main` without explicit user authorization.
+**Project workflow — no pull requests:** This is a long-lived, independent fork. For the foreseeable future, do not create, open, or submit pull requests for this repository, including draft or validation-only PRs. Work and commit directly on the designated feature branch. Do not use PRs as a CI trigger or handoff. Verify changes through push-triggered GitHub Actions where available and direct branch/commit inspection. Never merge into `main` without explicit user authorization.
 
 ## Android Storage Access Framework (SAF)
 

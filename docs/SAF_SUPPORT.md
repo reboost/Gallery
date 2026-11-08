@@ -1,5 +1,10 @@
 # Storage Access Framework (SAF) support
 
+## Project workflow — no pull requests
+
+This is a long-lived, independent fork/clone. **For the foreseeable future, do not create, open, or submit pull requests for this repository**, including draft, review, or validation-only PRs. Implement and commit directly on the designated feature branch. Do not use a PR as a CI trigger or handoff. Verify work with push-triggered GitHub Actions where available and direct branch/commit inspection. Do not merge into `main` without explicit user authorization.
+
+
 **Status:** Implementation in progress on `feature/saf-support-plan`. Persistent tree registration, direct main-menu access to saved roots, on-demand browsing, provider thumbnails, a URI-based image/video viewer with tiled image zoom and available EXIF details, provider-gated create/rename/delete, and native/stream-backed media copy/move are implemented. Gallery-wide media integration, cache invalidation, multi-item editing, and recursive transfers remain planned.
 
 ## Android 11+ tree-picker limits
@@ -39,10 +44,6 @@ Reference: [Android 11 storage updates — Document access restrictions](https:/
 - The original Commons file picker, folder creation dialog, MediaStore scanner, filesystem scanner, OTG scanner, media model, and Room schema remain unchanged.
 
 The storage-selection dialog itself is provided by the pinned `org.fossify:commons:7.1.3` dependency and has no extension point for additional choices. Rather than fork or copy the upstream file picker, this increment adds the selector at Gallery's existing folder-creation entry point and delegates all local paths back to the unchanged Commons picker. This keeps SAF changes additive and avoids maintaining a fork of an upstream-owned dialog.
-
-## Repository workflow
-
-This project does not use pull requests. **Never create or open a PR at any point in this project**, including draft or validation-only PRs. Implement and commit directly to the designated feature branch, verify with push-triggered GitHub Actions and direct commit/branch inspection, and never merge into `main` without explicit authorization.
 
 ## Goal
 
