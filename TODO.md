@@ -26,6 +26,7 @@ This file tracks planned, fork-specific work. Keep entries here until the corres
 - [x] Add a Gallery-owned storage selector at **Create new folder** with **Other locations…**; keep the existing Internal/SD/USB path flow delegated to Commons unchanged.
 - [x] Launch the Android system folder picker from **Other locations…** using ACTION_OPEN_DOCUMENT_TREE. Persist the exact returned tree URI and only its granted read/write modes.
 - [x] Show saved roots in **Previously added locations**, identifying revoked/unavailable grants and read-only roots without using display names as IDs.
+- [x] Add a direct main-menu entry to browse saved SAF sources or add another location, without entering the folder-creation flow.
 - [x] Persist each selected tree as a Gallery source record separately from the local destination path; selecting it does not copy files or put a content URI in a filesystem path.
 - [ ] Connect registered SAF sources to Gallery media discovery and album navigation.
 - [x] Allow read-only roots to be browsed in a separate SAF browser; offer folder creation, rename, and delete only when the saved write grant and provider flags permit each operation.

@@ -13,6 +13,9 @@
     <string name="folder_view">Switch to folder view</string>
     <string name="other_folder">Other folder</string>
     <string name="other_locations">Other locations…</string>
+    <string name="browse_saf_locations">Browse storage locations</string>
+    <string name="saf_storage_locations">Storage locations</string>
+    <string name="saf_add_location">Add another location…</string>
     <string name="previously_added_locations">Previously added locations</string>
     <string name="no_previously_added_locations">No locations have been added yet</string>
     <string name="saf_unavailable">Unavailable</string>

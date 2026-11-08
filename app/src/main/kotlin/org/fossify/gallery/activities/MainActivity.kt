@@ -544,6 +544,7 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
                 R.id.temporarily_show_excluded -> tryToggleTemporarilyShowExcluded()
                 R.id.stop_showing_excluded -> tryToggleTemporarilyShowExcluded()
                 R.id.create_new_folder -> createNewFolder()
+                R.id.browse_saf_locations -> browseSafLocations()
                 R.id.open_recycle_bin -> openRecycleBin()
                 R.id.column_count -> changeColumnCount()
                 R.id.set_as_default_folder -> setAsDefaultFolder()
@@ -937,6 +938,16 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
         } else {
             mZoomListener = null
         }
+    }
+
+    private fun browseSafLocations() {
+        SafStoragePickerDialog(
+            activity = this,
+            locationStore = SafLocationStore(this),
+            onLocalStorageSelected = ::openLocalFolderPicker,
+            onOtherLocations = ::launchSafTreePicker,
+            onSafLocationSelected = ::openSafLocation
+        ).showSavedLocations()
     }
 
     private fun createNewFolder() {

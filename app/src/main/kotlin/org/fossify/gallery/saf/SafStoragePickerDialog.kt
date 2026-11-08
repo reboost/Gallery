@@ -56,6 +56,30 @@ class SafStoragePickerDialog(
             .show()
     }
 
+    fun showSavedLocations() {
+        val locations = locationStore.getLocations()
+        val labels = locations.map { location ->
+            when {
+                !location.hasReadAccess -> "${location.displayName} — ${activity.getString(R.string.saf_unavailable)}"
+                !location.hasWriteAccess -> "${location.displayName} — ${activity.getString(R.string.saf_read_only)}"
+                else -> location.displayName
+            }
+        } + activity.getString(R.string.saf_add_location)
+
+        activity.getAlertDialogBuilder()
+            .setTitle(R.string.saf_storage_locations)
+            .setItems(labels.toTypedArray()) { _, index ->
+                val location = locations.getOrNull(index)
+                when {
+                    location == null -> onOtherLocations()
+                    location.hasReadAccess -> onSafLocationSelected(location)
+                    else -> activity.toast(R.string.saf_location_unavailable)
+                }
+            }
+            .setNegativeButton(org.fossify.commons.R.string.cancel, null)
+            .show()
+    }
+
     private fun showPreviouslyAddedLocations() {
         val locations = locationStore.getLocations()
         if (locations.isEmpty()) {

@@ -59,6 +59,11 @@
         android:title="@string/create_new_folder"
         app:showAsAction="never" />
     <item
+        android:id="@+id/browse_saf_locations"
+        android:showAsAction="never"
+        android:title="@string/browse_saf_locations"
+        app:showAsAction="never" />
+    <item
         android:id="@+id/open_recycle_bin"
         android:showAsAction="never"
         android:title="@string/open_the_recycle_bin"
