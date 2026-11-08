@@ -391,7 +391,7 @@ class SafBrowserActivity : SimpleActivity() {
 
         val sourceParentId = folderStack.lastOrNull()?.documentId ?: return
         val mimeType = (item as? SafBrowserItem.Media)?.let {
-            it.mimeType ?: MimeTypeMap.getSingleton()
+            it.mimeType?.takeIf(String::isNotBlank) ?: MimeTypeMap.getSingleton()
                 .getMimeTypeFromExtension(it.displayName.substringAfterLast('.', "").lowercase())
                 ?: "application/octet-stream"
         } ?: "application/octet-stream"
@@ -462,7 +462,7 @@ class SafBrowserActivity : SimpleActivity() {
     }
 
     private fun runItemMutation(successMessage: Int, operation: () -> SafItemMutationResult) {
-        if (!location.hasWriteAccess || !::executor.isInitialized) return
+        if (!::executor.isInitialized) return
         executor.submit {
             val result = operation()
             runOnUiThread {
