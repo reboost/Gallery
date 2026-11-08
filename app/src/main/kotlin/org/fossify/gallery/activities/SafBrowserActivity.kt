@@ -9,6 +9,7 @@ import android.provider.DocumentsContract
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.webkit.MimeTypeMap
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.LinearLayout
@@ -31,6 +32,7 @@ import org.fossify.gallery.saf.SafCreateFolderResult
 import org.fossify.gallery.saf.SafItemMutationResult
 import org.fossify.gallery.saf.SafLocation
 import org.fossify.gallery.saf.SafLocationStore
+import org.fossify.gallery.saf.SafMediaType
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
@@ -136,6 +138,7 @@ class SafBrowserActivity : SimpleActivity() {
         }
         selectDestinationMode = intent.getBooleanExtra(EXTRA_SELECT_DESTINATION, false)
         restoreFolderStack(savedInstanceState, rootDocumentId, location.displayName)
+        restorePendingTransfer(savedInstanceState)
 
         executor = Executors.newSingleThreadExecutor()
         buildContent()
@@ -145,6 +148,24 @@ class SafBrowserActivity : SimpleActivity() {
         refreshLayout.setOnRefreshListener { loadChildren() }
         onBackPressedDispatcher.addCallback(this) { navigateUp() }
         loadChildren()
+    }
+
+    private fun restorePendingTransfer(state: Bundle?) {
+        val action = state?.getString(KEY_TRANSFER_ACTION)?.let { runCatching { TransferAction.valueOf(it) }.getOrNull() }
+        val documentId = state?.getString(KEY_TRANSFER_DOCUMENT_ID)
+        val parentId = state?.getString(KEY_TRANSFER_PARENT_ID)
+        val displayName = state?.getString(KEY_TRANSFER_NAME)
+        val mimeType = state?.getString(KEY_TRANSFER_MIME)
+        if (action != null && documentId != null && parentId != null && displayName != null && mimeType != null) {
+            pendingTransfer = PendingTransfer(
+                action,
+                documentId,
+                parentId,
+                displayName,
+                mimeType,
+                state.getBoolean(KEY_TRANSFER_IS_DIRECTORY)
+            )
+        }
     }
 
     private fun restoreFolderStack(state: Bundle?, rootId: String, rootName: String) {
@@ -223,6 +244,14 @@ class SafBrowserActivity : SimpleActivity() {
     override fun onSaveInstanceState(outState: Bundle) {
         outState.putStringArrayList(KEY_FOLDER_IDS, ArrayList(folderStack.map { it.documentId }))
         outState.putStringArrayList(KEY_FOLDER_NAMES, ArrayList(folderStack.map { it.displayName }))
+        pendingTransfer?.let { transfer ->
+            outState.putString(KEY_TRANSFER_ACTION, transfer.action.name)
+            outState.putString(KEY_TRANSFER_DOCUMENT_ID, transfer.documentId)
+            outState.putString(KEY_TRANSFER_PARENT_ID, transfer.sourceParentDocumentId)
+            outState.putString(KEY_TRANSFER_NAME, transfer.displayName)
+            outState.putString(KEY_TRANSFER_MIME, transfer.mimeType)
+            outState.putBoolean(KEY_TRANSFER_IS_DIRECTORY, transfer.isDirectory)
+        }
         super.onSaveInstanceState(outState)
     }
 
@@ -348,7 +377,14 @@ class SafBrowserActivity : SimpleActivity() {
 
     private fun chooseTransferDestination(item: SafBrowserItem, action: TransferAction) {
         val writableLocations = SafLocationStore(this).getLocations().filter { it.hasWriteAccess }
-            .filter { !itemIsDirectory(item) || it.treeUri.authority == treeUri.authority }
+            .filter { location ->
+                when {
+                    itemIsDirectory(item) -> location.treeUri.authority == treeUri.authority
+                    action == TransferAction.MOVE && !item.supportsDelete ->
+                        location.treeUri.authority == treeUri.authority
+                    else -> true
+                }
+            }
         if (writableLocations.isEmpty()) {
             toast(R.string.saf_no_writable_locations)
             return
@@ -356,7 +392,9 @@ class SafBrowserActivity : SimpleActivity() {
 
         val sourceParentId = folderStack.lastOrNull()?.documentId ?: return
         val mimeType = (item as? SafBrowserItem.Media)?.let {
-            it.mimeType ?: if (it.type == SafMediaType.IMAGE) "image/*" else "video/*"
+            it.mimeType ?: MimeTypeMap.getSingleton()
+                .getMimeTypeFromExtension(it.displayName.substringAfterLast('.', "").lowercase())
+                ?: "application/octet-stream"
         } ?: "application/octet-stream"
         val transfer = PendingTransfer(
             action,
@@ -481,6 +519,12 @@ class SafBrowserActivity : SimpleActivity() {
         private const val EXTRA_RESULT_PATH_IDS = "result_path_ids"
         private const val KEY_FOLDER_IDS = "folder_ids"
         private const val KEY_FOLDER_NAMES = "folder_names"
+        private const val KEY_TRANSFER_ACTION = "transfer_action"
+        private const val KEY_TRANSFER_DOCUMENT_ID = "transfer_document_id"
+        private const val KEY_TRANSFER_PARENT_ID = "transfer_parent_id"
+        private const val KEY_TRANSFER_NAME = "transfer_name"
+        private const val KEY_TRANSFER_MIME = "transfer_mime"
+        private const val KEY_TRANSFER_IS_DIRECTORY = "transfer_is_directory"
 
         fun createIntent(context: Context, location: SafLocation, selectDestination: Boolean = false) =
             Intent(context, SafBrowserActivity::class.java)

@@ -130,33 +130,36 @@ class SafDocumentOperations(private val contentResolver: ContentResolver) {
         if (!hasPersistedReadGrant(sourceTreeUri) || !hasPersistedWriteGrant(targetTreeUri)) {
             return SafItemMutationResult.PermissionRevoked
         }
-        val sourceFlags = queryDocumentFlags(sourceTreeUri, sourceDocumentId)
-            ?: return SafItemMutationResult.Unavailable
-        val targetFlags = queryDocumentFlags(targetTreeUri, targetParentDocumentId)
-            ?: return SafItemMutationResult.Unavailable
-        if (targetFlags and Document.FLAG_DIR_SUPPORTS_CREATE == 0) {
-            return SafItemMutationResult.Unsupported
-        }
 
-        val sameProvider = sourceTreeUri.authority == targetTreeUri.authority
-        val sourceUri = DocumentsContract.buildDocumentUriUsingTree(sourceTreeUri, sourceDocumentId)
-        val targetParentUri = DocumentsContract.buildDocumentUriUsingTree(targetTreeUri, targetParentDocumentId)
-        if (sameProvider && sourceFlags and Document.FLAG_SUPPORTS_COPY != 0) {
-            return try {
+        return try {
+            val sourceFlags = queryDocumentFlags(sourceTreeUri, sourceDocumentId)
+                ?: return SafItemMutationResult.Unavailable
+            val targetFlags = queryDocumentFlags(targetTreeUri, targetParentDocumentId)
+                ?: return SafItemMutationResult.Unavailable
+            if (targetFlags and Document.FLAG_DIR_SUPPORTS_CREATE == 0) {
+                return SafItemMutationResult.Unsupported
+            }
+
+            val sourceUri = DocumentsContract.buildDocumentUriUsingTree(sourceTreeUri, sourceDocumentId)
+            val targetParentUri = DocumentsContract.buildDocumentUriUsingTree(targetTreeUri, targetParentDocumentId)
+            if (sourceTreeUri.authority == targetTreeUri.authority &&
+                sourceFlags and Document.FLAG_SUPPORTS_COPY != 0
+            ) {
                 if (DocumentsContract.copyDocument(contentResolver, sourceUri, targetParentUri) != null) {
                     SafItemMutationResult.Completed
                 } else {
                     SafItemMutationResult.Unavailable
                 }
-            } catch (_: SecurityException) {
-                SafItemMutationResult.PermissionRevoked
-            } catch (_: Exception) {
-                SafItemMutationResult.Unavailable
+            } else if (isDirectory) {
+                SafItemMutationResult.Unsupported
+            } else {
+                copyFileUsingStreams(sourceUri, targetParentUri, displayName, mimeType)
             }
+        } catch (_: SecurityException) {
+            SafItemMutationResult.PermissionRevoked
+        } catch (_: Exception) {
+            SafItemMutationResult.Unavailable
         }
-
-        if (isDirectory) return SafItemMutationResult.Unsupported
-        return copyFileUsingStreams(sourceUri, targetParentUri, displayName, mimeType)
     }
 
     fun moveDocument(
@@ -176,40 +179,36 @@ class SafDocumentOperations(private val contentResolver: ContentResolver) {
             return SafItemMutationResult.Unsupported
         }
 
-        val sourceFlags = queryDocumentFlags(sourceTreeUri, sourceDocumentId)
-            ?: return SafItemMutationResult.Unavailable
-        val targetFlags = queryDocumentFlags(targetTreeUri, targetParentDocumentId)
-            ?: return SafItemMutationResult.Unavailable
-        if (targetFlags and Document.FLAG_DIR_SUPPORTS_CREATE == 0) {
-            return SafItemMutationResult.Unsupported
-        }
-
-        val sameProvider = sourceTreeUri.authority == targetTreeUri.authority
-        val sourceUri = DocumentsContract.buildDocumentUriUsingTree(sourceTreeUri, sourceDocumentId)
-        val sourceParentUri = DocumentsContract.buildDocumentUriUsingTree(sourceTreeUri, sourceParentDocumentId)
-        val targetParentUri = DocumentsContract.buildDocumentUriUsingTree(targetTreeUri, targetParentDocumentId)
-        if (sameProvider && sourceFlags and Document.FLAG_SUPPORTS_MOVE != 0) {
-            return try {
-                if (DocumentsContract.moveDocument(contentResolver, sourceUri, sourceParentUri, targetParentUri) != null) {
-                    SafItemMutationResult.Completed
-                } else {
-                    SafItemMutationResult.Unavailable
-                }
-            } catch (_: SecurityException) {
-                SafItemMutationResult.PermissionRevoked
-            } catch (_: Exception) {
-                SafItemMutationResult.Unavailable
-            }
-        }
-
-        if (isDirectory || sourceFlags and Document.FLAG_SUPPORTS_DELETE == 0) {
-            return SafItemMutationResult.Unsupported
-        }
-
-        val copyResult = copyFileUsingStreams(sourceUri, targetParentUri, displayName, mimeType)
-        if (copyResult != SafItemMutationResult.Completed) return copyResult
-
         return try {
+            val sourceFlags = queryDocumentFlags(sourceTreeUri, sourceDocumentId)
+                ?: return SafItemMutationResult.Unavailable
+            val targetFlags = queryDocumentFlags(targetTreeUri, targetParentDocumentId)
+                ?: return SafItemMutationResult.Unavailable
+            if (targetFlags and Document.FLAG_DIR_SUPPORTS_CREATE == 0) {
+                return SafItemMutationResult.Unsupported
+            }
+
+            val sourceUri = DocumentsContract.buildDocumentUriUsingTree(sourceTreeUri, sourceDocumentId)
+            val sourceParentUri = DocumentsContract.buildDocumentUriUsingTree(sourceTreeUri, sourceParentDocumentId)
+            val targetParentUri = DocumentsContract.buildDocumentUriUsingTree(targetTreeUri, targetParentDocumentId)
+            if (sourceTreeUri.authority == targetTreeUri.authority &&
+                sourceFlags and Document.FLAG_SUPPORTS_MOVE != 0
+            ) {
+                if (DocumentsContract.moveDocument(contentResolver, sourceUri, sourceParentUri, targetParentUri) != null) {
+                    return SafItemMutationResult.Completed
+                }
+                return SafItemMutationResult.Unavailable
+            }
+
+            if (isDirectory || sourceFlags and Document.FLAG_SUPPORTS_DELETE == 0) {
+                return SafItemMutationResult.Unsupported
+            }
+
+            val copyResult = copyFileUsingStreams(sourceUri, targetParentUri, displayName, mimeType)
+            if (copyResult != SafItemMutationResult.Completed) {
+                return copyResult
+            }
+
             val refreshedFlags = queryDocumentFlags(sourceTreeUri, sourceDocumentId)
             if (refreshedFlags == null || refreshedFlags and Document.FLAG_SUPPORTS_DELETE == 0 ||
                 !DocumentsContract.deleteDocument(contentResolver, sourceUri)
@@ -218,8 +217,10 @@ class SafDocumentOperations(private val contentResolver: ContentResolver) {
             } else {
                 SafItemMutationResult.Completed
             }
+        } catch (_: SecurityException) {
+            SafItemMutationResult.PermissionRevoked
         } catch (_: Exception) {
-            SafItemMutationResult.SourceRetained
+            SafItemMutationResult.Unavailable
         }
     }
 
@@ -233,19 +234,20 @@ class SafDocumentOperations(private val contentResolver: ContentResolver) {
         return try {
             val input = contentResolver.openInputStream(sourceUri)
                 ?: return SafItemMutationResult.Unavailable
-            createdUri = DocumentsContract.createDocument(
-                contentResolver,
-                targetParentUri,
-                mimeType.ifBlank { "application/octet-stream" },
-                displayName
-            ) ?: return SafItemMutationResult.Unavailable
-            val output = contentResolver.openOutputStream(createdUri, "w")
-                ?: return if (removePartialDocument(createdUri)) {
-                    SafItemMutationResult.Unavailable
-                } else {
-                    SafItemMutationResult.PartialTransfer
-                }
             input.use { source ->
+                val targetUri = DocumentsContract.createDocument(
+                    contentResolver,
+                    targetParentUri,
+                    mimeType.ifBlank { "application/octet-stream" },
+                    displayName
+                ) ?: return SafItemMutationResult.Unavailable
+                createdUri = targetUri
+                val output = contentResolver.openOutputStream(targetUri, "w")
+                    ?: return if (removePartialDocument(targetUri)) {
+                        SafItemMutationResult.Unavailable
+                    } else {
+                        SafItemMutationResult.PartialTransfer
+                    }
                 output.use { destination -> source.copyTo(destination) }
             }
             SafItemMutationResult.Completed
