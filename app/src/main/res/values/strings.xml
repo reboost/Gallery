@@ -42,6 +42,11 @@
     <string name="saf_item_deleted">Item deleted</string>
     <string name="saf_operation_unsupported">This provider does not support that operation</string>
     <string name="saf_operation_failed">Could not complete the operation</string>
+    <string name="saf_choose_folder">Choose this folder</string>
+    <string name="saf_copy_to">Copy to…</string>
+    <string name="saf_move_to">Move to…</string>
+    <string name="saf_item_copied">Item copied</string>
+    <string name="saf_item_moved">Item moved</string>
     <string name="saf_folder">Folder</string>
     <string name="saf_image">Image</string>
     <string name="saf_video">Video</string>

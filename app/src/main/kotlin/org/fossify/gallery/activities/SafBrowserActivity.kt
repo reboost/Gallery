@@ -15,6 +15,7 @@ import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.activity.addCallback
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
@@ -43,11 +44,47 @@ class SafBrowserActivity : SimpleActivity() {
     private lateinit var empty: TextView
     private lateinit var title: TextView
     private lateinit var createFolderButton: TextView
+    private lateinit var chooseFolderButton: TextView
     private lateinit var executor: ExecutorService
     private val folderStack = ArrayList<Folder>()
     private var queryTask: Future<*>? = null
     private var cancellationSignal: CancellationSignal? = null
     private var adapter: SafBrowserAdapter? = null
+    private var selectDestinationMode = false
+    private var pendingTransfer: PendingTransfer? = null
+
+    private data class PendingTransfer(
+        val action: TransferAction,
+        val documentId: String,
+        val sourceParentDocumentId: String
+    )
+
+    private enum class TransferAction { COPY, MOVE }
+
+    private val destinationPicker = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val transfer = pendingTransfer
+        pendingTransfer = null
+        val data = result.data
+        val targetTreeUri = data?.getStringExtra(EXTRA_RESULT_TREE_URI)?.let(Uri::parse)
+        val targetDocumentId = data?.getStringExtra(EXTRA_RESULT_DOCUMENT_ID)
+        if (result.resultCode == RESULT_OK && transfer != null && targetTreeUri != null && !targetDocumentId.isNullOrBlank()) {
+            val operations = SafDocumentOperations(contentResolver)
+            when (transfer.action) {
+                TransferAction.COPY -> runItemMutation(R.string.saf_item_copied) {
+                    operations.copyDocument(treeUri, transfer.documentId, targetTreeUri, targetDocumentId)
+                }
+                TransferAction.MOVE -> runItemMutation(R.string.saf_item_moved) {
+                    operations.moveDocument(
+                        treeUri,
+                        transfer.documentId,
+                        transfer.sourceParentDocumentId,
+                        targetTreeUri,
+                        targetDocumentId
+                    )
+                }
+            }
+        }
+    }
 
     private data class Folder(val documentId: String, val displayName: String)
 
@@ -73,6 +110,7 @@ class SafBrowserActivity : SimpleActivity() {
             finish()
             return
         }
+        selectDestinationMode = intent.getBooleanExtra(EXTRA_SELECT_DESTINATION, false)
         restoreFolderStack(savedInstanceState, rootDocumentId, location.displayName)
 
         executor = Executors.newSingleThreadExecutor()
@@ -127,6 +165,17 @@ class SafBrowserActivity : SimpleActivity() {
             setOnClickListener { promptCreateFolder() }
         }
         header.addView(createFolderButton, LinearLayout.LayoutParams(-2, 56.dp()))
+        chooseFolderButton = TextView(this).apply {
+            text = getString(R.string.saf_choose_folder)
+            textSize = 14f
+            gravity = Gravity.CENTER
+            setPadding(12.dp(), 0, 0, 0)
+            isClickable = true
+            isFocusable = true
+            visibility = View.GONE
+            setOnClickListener { returnSelectedFolder() }
+        }
+        header.addView(chooseFolderButton, LinearLayout.LayoutParams(-2, 56.dp()))
 
         val frame = FrameLayout(this)
         refreshLayout = SwipeRefreshLayout(this)
@@ -172,16 +221,18 @@ class SafBrowserActivity : SimpleActivity() {
         refreshLayout.isRefreshing = false
         val parentId = folderStack.last().documentId
         createFolderButton.visibility = View.GONE
+        chooseFolderButton.visibility = View.GONE
 
         queryTask = executor.submit {
-            val canCreateFolder = location.hasWriteAccess &&
-                SafDocumentOperations(contentResolver).supportsCreate(treeUri, parentId)
+            val supportsCreate = SafDocumentOperations(contentResolver).supportsCreate(treeUri, parentId)
+            val canCreateFolder = location.hasWriteAccess && supportsCreate
             val result = SafDocumentEnumerator(contentResolver).listChildren(treeUri, parentId, signal)
             runOnUiThread {
                 if (isFinishing || isDestroyed || cancellationSignal !== signal) return@runOnUiThread
                 loading.visibility = View.GONE
                 refreshLayout.isRefreshing = false
-                createFolderButton.visibility = if (canCreateFolder) View.VISIBLE else View.GONE
+                createFolderButton.visibility = if (canCreateFolder && result is SafBrowseResult.Success) View.VISIBLE else View.GONE
+                chooseFolderButton.visibility = if (selectDestinationMode && canCreateFolder && result is SafBrowseResult.Success) View.VISIBLE else View.GONE
                 when (result) {
                     is SafBrowseResult.Success -> {
                         adapter?.submitItems(result.items)
@@ -232,28 +283,58 @@ class SafBrowserActivity : SimpleActivity() {
 
     private enum class ItemAction {
         RENAME,
-        DELETE
+        DELETE,
+        COPY,
+        MOVE
     }
 
     private fun onItemLongClicked(item: SafBrowserItem) {
-        if (!location.hasWriteAccess) return
+        if (!location.hasWriteAccess || selectDestinationMode) return
         val actions = buildList {
             if (item.supportsRename) add(ItemAction.RENAME)
             if (item.supportsDelete) add(ItemAction.DELETE)
+            if (item.supportsCopy) add(ItemAction.COPY)
+            if (item.supportsMove) add(ItemAction.MOVE)
         }
         if (actions.isEmpty()) return
 
         val labels = actions.map {
-            getString(if (it == ItemAction.RENAME) R.string.saf_rename else R.string.saf_delete)
+            getString(
+                when (it) {
+                    ItemAction.RENAME -> R.string.saf_rename
+                    ItemAction.DELETE -> R.string.saf_delete
+                    ItemAction.COPY -> R.string.saf_copy_to
+                    ItemAction.MOVE -> R.string.saf_move_to
+                }
+            )
         }.toTypedArray()
         getAlertDialogBuilder()
             .setItems(labels) { _, index ->
                 when (actions[index]) {
                     ItemAction.RENAME -> promptRename(item)
                     ItemAction.DELETE -> confirmDelete(item)
+                    ItemAction.COPY -> chooseTransferDestination(item, TransferAction.COPY)
+                    ItemAction.MOVE -> chooseTransferDestination(item, TransferAction.MOVE)
                 }
             }
             .show()
+    }
+
+    private fun chooseTransferDestination(item: SafBrowserItem, action: TransferAction) {
+        val sourceParentId = folderStack.lastOrNull()?.documentId ?: return
+        pendingTransfer = PendingTransfer(action, item.documentId, sourceParentId)
+        destinationPicker.launch(SafBrowserActivity.createIntent(this, location, selectDestination = true))
+    }
+
+    private fun returnSelectedFolder() {
+        val currentFolder = folderStack.lastOrNull() ?: return
+        setResult(
+            RESULT_OK,
+            Intent()
+                .putExtra(EXTRA_RESULT_TREE_URI, treeUri.toString())
+                .putExtra(EXTRA_RESULT_DOCUMENT_ID, currentFolder.documentId)
+        )
+        finish()
     }
 
     private fun promptRename(item: SafBrowserItem) {
@@ -335,10 +416,15 @@ class SafBrowserActivity : SimpleActivity() {
 
     companion object {
         private const val EXTRA_TREE_URI = "tree_uri"
+        private const val EXTRA_SELECT_DESTINATION = "select_destination"
+        private const val EXTRA_RESULT_TREE_URI = "result_tree_uri"
+        private const val EXTRA_RESULT_DOCUMENT_ID = "result_document_id"
         private const val KEY_FOLDER_IDS = "folder_ids"
         private const val KEY_FOLDER_NAMES = "folder_names"
 
-        fun createIntent(context: Context, location: SafLocation) =
-            Intent(context, SafBrowserActivity::class.java).putExtra(EXTRA_TREE_URI, location.treeUri.toString())
+        fun createIntent(context: Context, location: SafLocation, selectDestination: Boolean = false) =
+            Intent(context, SafBrowserActivity::class.java)
+                .putExtra(EXTRA_TREE_URI, location.treeUri.toString())
+                .putExtra(EXTRA_SELECT_DESTINATION, selectDestination)
     }
 }

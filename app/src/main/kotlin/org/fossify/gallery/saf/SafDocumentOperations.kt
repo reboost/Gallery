@@ -113,6 +113,80 @@ class SafDocumentOperations(private val contentResolver: ContentResolver) {
         }
     }
 
+    fun copyDocument(
+        sourceTreeUri: Uri,
+        sourceDocumentId: String,
+        targetTreeUri: Uri,
+        targetParentDocumentId: String
+    ): SafItemMutationResult {
+        if (sourceTreeUri.authority != targetTreeUri.authority) {
+            return SafItemMutationResult.Unsupported
+        }
+
+        return try {
+            val sourceFlags = queryDocumentFlags(sourceTreeUri, sourceDocumentId)
+                ?: return SafItemMutationResult.Unavailable
+            if (sourceFlags and Document.FLAG_SUPPORTS_COPY == 0) {
+                return SafItemMutationResult.Unsupported
+            }
+            val targetFlags = queryDocumentFlags(targetTreeUri, targetParentDocumentId)
+                ?: return SafItemMutationResult.Unavailable
+            if (targetFlags and Document.FLAG_DIR_SUPPORTS_CREATE == 0) {
+                return SafItemMutationResult.Unsupported
+            }
+
+            val sourceUri = DocumentsContract.buildDocumentUriUsingTree(sourceTreeUri, sourceDocumentId)
+            val targetParentUri = DocumentsContract.buildDocumentUriUsingTree(targetTreeUri, targetParentDocumentId)
+            if (DocumentsContract.copyDocument(contentResolver, sourceUri, targetParentUri) == null) {
+                SafItemMutationResult.Unavailable
+            } else {
+                SafItemMutationResult.Completed
+            }
+        } catch (_: SecurityException) {
+            SafItemMutationResult.PermissionRevoked
+        } catch (_: Exception) {
+            SafItemMutationResult.Unavailable
+        }
+    }
+
+    fun moveDocument(
+        sourceTreeUri: Uri,
+        sourceDocumentId: String,
+        sourceParentDocumentId: String,
+        targetTreeUri: Uri,
+        targetParentDocumentId: String
+    ): SafItemMutationResult {
+        if (sourceTreeUri.authority != targetTreeUri.authority || sourceParentDocumentId == targetParentDocumentId) {
+            return SafItemMutationResult.Unsupported
+        }
+
+        return try {
+            val sourceFlags = queryDocumentFlags(sourceTreeUri, sourceDocumentId)
+                ?: return SafItemMutationResult.Unavailable
+            if (sourceFlags and Document.FLAG_SUPPORTS_MOVE == 0) {
+                return SafItemMutationResult.Unsupported
+            }
+            val targetFlags = queryDocumentFlags(targetTreeUri, targetParentDocumentId)
+                ?: return SafItemMutationResult.Unavailable
+            if (targetFlags and Document.FLAG_DIR_SUPPORTS_CREATE == 0) {
+                return SafItemMutationResult.Unsupported
+            }
+
+            val sourceUri = DocumentsContract.buildDocumentUriUsingTree(sourceTreeUri, sourceDocumentId)
+            val sourceParentUri = DocumentsContract.buildDocumentUriUsingTree(sourceTreeUri, sourceParentDocumentId)
+            val targetParentUri = DocumentsContract.buildDocumentUriUsingTree(targetTreeUri, targetParentDocumentId)
+            if (DocumentsContract.moveDocument(contentResolver, sourceUri, sourceParentUri, targetParentUri) == null) {
+                SafItemMutationResult.Unavailable
+            } else {
+                SafItemMutationResult.Completed
+            }
+        } catch (_: SecurityException) {
+            SafItemMutationResult.PermissionRevoked
+        } catch (_: Exception) {
+            SafItemMutationResult.Unavailable
+        }
+    }
+
     private fun queryDocumentFlags(treeUri: Uri, documentId: String): Int? {
         val documentUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, documentId)
         return contentResolver.query(

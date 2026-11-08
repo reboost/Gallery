@@ -41,7 +41,8 @@ This file tracks planned, fork-specific work. Keep entries here until the corres
 - [ ] Add source-aware cache invalidation after future mutations.
 - [x] Add provider-capability-aware folder creation, gated by the exact saved write grant and `FLAG_DIR_SUPPORTS_CREATE` on the current directory.
 - [x] Add capability-aware rename and delete actions, shown only when the selected document advertises the corresponding provider flags.
-- [ ] Add provider-backed file writes and copy/move behavior only where supported by the provider; keep unsupported actions unavailable.
+- [x] Add same-provider copy/move using `DocumentsContract` only when the source and destination advertise the required capabilities.
+- [ ] Add stream-backed file writes and cross-provider copy/move fallbacks only with explicit read/write checks and failure cleanup.
 - [ ] Integrate SAF items with Gallery's main album/media UI, including search, sorting/grouping, favorites, filters, and album navigation.
 - [x] Add URI-granted sharing from the SAF media viewer without converting document URIs to filesystem paths.
 - [ ] Add provider-aware multi-item selection and editing only where URI-based APIs support them.

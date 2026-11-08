@@ -16,6 +16,10 @@ sealed interface SafBrowserItem {
         get() = flags and Document.FLAG_SUPPORTS_RENAME != 0
     val supportsDelete: Boolean
         get() = flags and Document.FLAG_SUPPORTS_DELETE != 0
+    val supportsCopy: Boolean
+        get() = flags and Document.FLAG_SUPPORTS_COPY != 0
+    val supportsMove: Boolean
+        get() = flags and Document.FLAG_SUPPORTS_MOVE != 0
 
     data class Directory(
         override val documentId: String,
