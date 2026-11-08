@@ -37,7 +37,8 @@ This file tracks planned, fork-specific work. Keep entries here until the corres
 - [x] Expose SAF roots through a separate read-only browser and item adapter without replacing or rewriting the local MediaStore/filesystem pipeline.
 - [x] Load SAF thumbnails and open images/videos through content URIs with URI/metadata-based thumbnail cache signatures.
 - [x] Add high-resolution/deep-zoom image viewing through the existing tiled decoder, using document URIs and EXIF orientation.
-- [ ] Add provider-backed dimensions and EXIF details, and source-aware cache invalidation after future mutations.
+- [x] Show provider-backed image dimensions and available EXIF capture/camera metadata in the SAF viewer.
+- [ ] Add source-aware cache invalidation after future mutations.
 - [x] Add provider-capability-aware folder creation, gated by the exact saved write grant and `FLAG_DIR_SUPPORTS_CREATE` on the current directory.
 - [x] Add capability-aware rename and delete actions, shown only when the selected document advertises the corresponding provider flags.
 - [ ] Add provider-backed file writes and copy/move behavior only where supported by the provider; keep unsupported actions unavailable.

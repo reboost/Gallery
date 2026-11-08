@@ -22,6 +22,13 @@
     <string name="saf_location_unavailable">This location is unavailable or its access permission was revoked</string>
     <string name="saf_back">Back</string>
     <string name="saf_share">Share</string>
+    <string name="saf_details">Details</string>
+    <string name="saf_dimensions_format">Dimensions: %1$d × %2$d</string>
+    <string name="saf_file_size">Size: %1$s</string>
+    <string name="saf_last_modified">Modified: %1$s</string>
+    <string name="saf_date_taken">Date taken: %1$s</string>
+    <string name="saf_camera">Camera: %1$s</string>
+    <string name="saf_no_details">No additional details are available</string>
     <string name="saf_create_folder">New folder</string>
     <string name="saf_folder_name">Folder name</string>
     <string name="saf_folder_created">Folder created</string>

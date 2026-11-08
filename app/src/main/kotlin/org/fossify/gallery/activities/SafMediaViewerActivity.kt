@@ -22,6 +22,8 @@ import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.bumptech.glide.signature.ObjectKey
+import org.fossify.commons.extensions.formatSize
+import org.fossify.commons.extensions.getAlertDialogBuilder
 import org.fossify.commons.extensions.toast
 import org.fossify.gallery.R
 import org.fossify.gallery.saf.SafBrowserItem
@@ -33,6 +35,15 @@ import java.util.concurrent.Executors
 import java.util.concurrent.Future
 
 class SafMediaViewerActivity : SimpleActivity() {
+    private data class SafImageDetails(
+        val rotation: Int = 0,
+        val width: Int = 0,
+        val height: Int = 0,
+        val dateTaken: String? = null,
+        val cameraMake: String? = null,
+        val cameraModel: String? = null
+    )
+
     private lateinit var image: ImageView
     private lateinit var zoomImage: SubsamplingScaleImageView
     private lateinit var video: VideoView
@@ -40,6 +51,11 @@ class SafMediaViewerActivity : SimpleActivity() {
     private lateinit var documentUri: android.net.Uri
     private lateinit var displayName: String
     private lateinit var mimeType: String
+    private var imageSize = -1L
+    private var imageLastModified = 0L
+    private var imageWidth = 0
+    private var imageHeight = 0
+    private var imageDetails = SafImageDetails()
     private val imageExecutor: ExecutorService = Executors.newSingleThreadExecutor()
     private var imageLoadTask: Future<*>? = null
 
@@ -58,6 +74,10 @@ class SafMediaViewerActivity : SimpleActivity() {
         findViewById<TextView>(VIEWER_TITLE).text = displayName
         findViewById<View>(VIEWER_BACK).setOnClickListener { finish() }
         findViewById<View>(VIEWER_SHARE).setOnClickListener { shareMedia() }
+        findViewById<View>(VIEWER_INFO).apply {
+            visibility = if (mediaType == SafMediaType.IMAGE.name) View.VISIBLE else View.GONE
+            setOnClickListener { showImageDetails() }
+        }
 
         val size = intent.getLongExtra(EXTRA_SIZE, -1L)
         val modified = intent.getLongExtra(EXTRA_MODIFIED, 0L)
@@ -108,6 +128,17 @@ class SafMediaViewerActivity : SimpleActivity() {
             ellipsize = android.text.TextUtils.TruncateAt.END
         }
         header.addView(title, LinearLayout.LayoutParams(0, -2, 1f))
+        val info = TextView(this).apply {
+            id = VIEWER_INFO
+            text = getString(R.string.saf_details)
+            setTextColor(Color.WHITE)
+            textSize = 14f
+            gravity = Gravity.CENTER
+            setPadding(8.dp(), 0, 8.dp(), 0)
+            isClickable = true
+            isFocusable = true
+        }
+        header.addView(info, LinearLayout.LayoutParams(-2, 56.dp()))
         val share = TextView(this).apply {
             id = VIEWER_SHARE
             text = getString(R.string.saf_share)
@@ -143,15 +174,18 @@ class SafMediaViewerActivity : SimpleActivity() {
         loading.visibility = View.VISIBLE
         image.visibility = View.GONE
         zoomImage.visibility = View.GONE
+        imageSize = size
+        imageLastModified = modified
         imageLoadTask?.cancel(true)
         imageLoadTask = imageExecutor.submit {
-            val rotation = readImageRotation()
+            val metadata = readImageDetails()
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
+                imageDetails = metadata
                 val signature = ObjectKey("$documentUri|$modified|$size")
                 val metrics = resources.displayMetrics
                 val bitmapDecoder = object : DecoderFactory<ImageDecoder> {
-                    override fun make(): ImageDecoder = MyGlideImageDecoder(rotation, signature)
+                    override fun make(): ImageDecoder = MyGlideImageDecoder(metadata.rotation, signature)
                 }
                 val regionDecoder = object : DecoderFactory<ImageRegionDecoder> {
                     override fun make(): ImageRegionDecoder = PicassoRegionDecoder(
@@ -167,11 +201,20 @@ class SafMediaViewerActivity : SimpleActivity() {
                     setMaxTileSize(4096)
                     setMinimumTileDpi(-1)
                     maxScale = 10f
-                    orientation = rotation
+                    orientation = metadata.rotation
                     onImageEventListener = object : SubsamplingScaleImageView.OnImageEventListener {
                         override fun onReady() {
                             loading.visibility = View.GONE
                             image.visibility = View.GONE
+                            val width = metadata.width.takeIf { it > 0 } ?: sWidth
+                            val height = metadata.height.takeIf { it > 0 } ?: sHeight
+                            if (metadata.rotation == 90 || metadata.rotation == 270) {
+                                imageWidth = height
+                                imageHeight = width
+                            } else {
+                                imageWidth = width
+                                imageHeight = height
+                            }
                         }
 
                         override fun onImageLoadError(e: Exception) {
@@ -197,7 +240,60 @@ class SafMediaViewerActivity : SimpleActivity() {
         }
     }
 
-    private fun readImageRotation(): Int = runCatching {
+    private fun readImageDetails(): SafImageDetails = runCatching {
+        contentResolver.openInputStream(documentUri)?.use { input ->
+            val exif = ExifInterface(input)
+            val orientation = exif.getAttributeInt(
+                ExifInterface.TAG_ORIENTATION,
+                ExifInterface.ORIENTATION_NORMAL
+            )
+            val rotation = when (orientation) {
+                ExifInterface.ORIENTATION_ROTATE_90,
+                ExifInterface.ORIENTATION_TRANSVERSE -> 90
+                ExifInterface.ORIENTATION_ROTATE_180 -> 180
+                ExifInterface.ORIENTATION_ROTATE_270,
+                ExifInterface.ORIENTATION_TRANSPOSE -> 270
+                else -> 0
+            }
+            SafImageDetails(
+                rotation = rotation,
+                width = exif.getAttributeInt(ExifInterface.TAG_IMAGE_WIDTH, 0),
+                height = exif.getAttributeInt(ExifInterface.TAG_IMAGE_LENGTH, 0),
+                dateTaken = exif.getAttribute(ExifInterface.TAG_DATETIME_ORIGINAL),
+                cameraMake = exif.getAttribute(ExifInterface.TAG_MAKE),
+                cameraModel = exif.getAttribute(ExifInterface.TAG_MODEL)
+            )
+        } ?: SafImageDetails()
+    }.getOrDefault(SafImageDetails())
+
+    private fun showImageDetails() {
+        val details = buildList {
+            if (imageWidth > 0 && imageHeight > 0) {
+                add(getString(R.string.saf_dimensions_format, imageWidth, imageHeight))
+            }
+            if (imageSize > 0L) {
+                add(getString(R.string.saf_file_size, imageSize.formatSize()))
+            }
+            if (imageLastModified > 0L) {
+                val modified = android.text.format.DateFormat.format("yyyy-MM-dd HH:mm", imageLastModified)
+                add(getString(R.string.saf_last_modified, modified))
+            }
+            imageDetails.dateTaken?.takeIf(String::isNotBlank)?.let {
+                add(getString(R.string.saf_date_taken, it))
+            }
+            listOfNotNull(imageDetails.cameraMake, imageDetails.cameraModel)
+                .filter(String::isNotBlank)
+                .joinToString(" ")
+                .takeIf(String::isNotBlank)
+                ?.let { add(getString(R.string.saf_camera, it)) }
+        }
+        getAlertDialogBuilder()
+            .setTitle(displayName)
+            .setMessage(details.ifEmpty { listOf(getString(R.string.saf_no_details)) }.joinToString("\n"))
+            .setPositiveButton(org.fossify.commons.R.string.ok, null)
+            .show()
+    }
+
         contentResolver.openInputStream(documentUri)?.use { input ->
             val orientation = ExifInterface(input).getAttributeInt(
                 ExifInterface.TAG_ORIENTATION,
@@ -244,6 +340,7 @@ class SafMediaViewerActivity : SimpleActivity() {
         private const val VIEWER_TITLE = 1001
         private const val VIEWER_BACK = 1002
         private const val VIEWER_SHARE = 1003
+        private const val VIEWER_INFO = 1004
 
         fun createIntent(context: Context, item: SafBrowserItem.Media) =
             Intent(context, SafMediaViewerActivity::class.java)
