@@ -48,6 +48,7 @@
     <string name="saf_choose_folder">Choose this folder</string>
     <string name="saf_copy_to">Copy to…</string>
     <string name="saf_move_to">Move to…</string>
+    <string name="saf_move_confirmation">Move “%1$s” to the selected location?</string>
     <string name="saf_item_copied">Item copied</string>
     <string name="saf_item_moved">Item moved</string>
     <string name="saf_select_destination">Choose destination</string>

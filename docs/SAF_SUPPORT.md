@@ -2,6 +2,19 @@
 
 **Status:** Implementation in progress on `feature/saf-support-plan`. Persistent tree registration, on-demand browsing, provider thumbnails, a URI-based image/video viewer with tiled image zoom and available EXIF details, and provider-gated create/rename/delete are implemented. Gallery-wide integration, cache invalidation, and other mutations remain planned.
 
+## Android 11+ tree-picker limits
+
+This branch currently targets API 36 (minimum API 26). Because it targets API 30 or later, Android 11+ applies the following `ACTION_OPEN_DOCUMENT_TREE` restrictions:
+
+- The internal storage volume root cannot be selected.
+- The root of each SD-card volume that the device manufacturer classifies as reliable cannot be selected, whether the volume is emulated or removable.
+- The `Download` directory cannot be selected as a tree. The system picker may display it but disables the select action.
+- `ACTION_OPEN_DOCUMENT_TREE` and `ACTION_OPEN_DOCUMENT` cannot be used to select individual files inside `Android/data/`, `Android/obb/`, or their subdirectories.
+
+These are platform picker restrictions, not a provider permission failure. Keep the exact user-selected tree boundary; do not work around the restrictions by widening a grant. Users can select an allowed subdirectory or add a supported removable/network/cloud document-provider root. For compatibility testing, Android documents the `RESTRICT_STORAGE_ACCESS_FRAMEWORK` app-compatibility flag as an alternative way to exercise the restrictions before changing target SDK.
+
+Reference: [Android 11 storage updates — Document access restrictions](https://developer.android.com/about/versions/11/privacy/storage#document-access-restrictions).
+
 ## Implementation progress
 
 ### Foundation increment
@@ -20,8 +33,8 @@
 - Each opened folder is queried as one provider result set. Enumeration is on demand and off the UI thread, but provider-specific paging/limits for very large flat folders remain future work.
 - Viewer inspection confirmed that the existing Gallery flow is not a safe SAF adapter: `MediaActivity`/`MediaAdapter` and Room queries identify media by filesystem path, while the external-URI viewer path temporarily places a `content://` URI in `Medium.path` and attempts path resolution. The SAF integration must not reuse that shortcut; the browsing increment needs a distinct document identity and URI-based loading.
 - Folder creation is offered only when the saved tree grant includes write access and the currently open provider directory advertises `Document.FLAG_DIR_SUPPORTS_CREATE`. The operation re-queries the capability before calling `DocumentsContract.createDocument()` and reports revoked, unsupported, and unavailable outcomes separately. Item rename/delete also re-query `COLUMN_FLAGS` and call `DocumentsContract.renameDocument()` / `deleteDocument()` only when `FLAG_SUPPORTS_RENAME` / `FLAG_SUPPORTS_DELETE` is advertised; delete requires confirmation.
-- Same-provider copy/move uses `DocumentsContract.copyDocument()` / `moveDocument()` when the source flags advertise native support. The destination must have a persisted write grant and advertise `FLAG_DIR_SUPPORTS_CREATE`; all source/destination grants and flags are re-checked before operating.
-- Image/video files can also be copied between different saved providers using `ContentResolver` input/output streams and `DocumentsContract.createDocument()`. The source needs read access and the destination needs a persisted write grant plus create capability. Moves additionally require write access and `FLAG_SUPPORTS_DELETE` on the source; the original is deleted only after the stream copy completes. Partial destination documents are deleted on failure when the provider permits cleanup; a separate message reports when the original remains after a successful copy.
+- Same-provider copy/move uses `DocumentsContract.copyDocument()` / `moveDocument()` when the source flags advertise native support. The destination must have a persisted write grant and advertise `FLAG_DIR_SUPPORTS_CREATE`; all source/destination grants and flags are re-checked before operating. Move operations require a final confirmation.
+- Image/video files can also be copied between different saved providers using `ContentResolver` input/output streams and `DocumentsContract.createDocument()`. The source needs read access and the destination needs a persisted write grant plus create capability. Stream-backed moves additionally require source write access and `FLAG_SUPPORTS_DELETE`; the original is deleted only after the stream copy completes. Native same-provider moves use `FLAG_SUPPORTS_MOVE`. Every move asks for confirmation. Partial destination documents are deleted on failure when the provider permits cleanup; a separate message reports when the original remains after a successful copy.
 - Directory transfers remain provider-native and same-authority only. Stream-backed file creation/editing, recursive directory transfer, multi-item selection, and provider-backed editing are not integrated. A provider's read-only or partial capability set must continue to hide unsupported actions.
 - The original Commons file picker, folder creation dialog, MediaStore scanner, filesystem scanner, OTG scanner, media model, and Room schema remain unchanged.
 

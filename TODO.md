@@ -49,6 +49,6 @@ This file tracks planned, fork-specific work. Keep entries here until the corres
 - [x] Add URI-granted sharing from the SAF media viewer without converting document URIs to filesystem paths.
 - [ ] Add provider-aware multi-item selection and editing only where URI-based APIs support them.
 - [ ] Verify local media behavior remains unchanged and exercise removable/USB, SMB/CIFS, WebDAV, rclone, cloud, read-only, revoked/offline, and large-tree scenarios.
-- [ ] Document Android 11+ picker restrictions, including internal/SD storage roots, Downloads, Android/data, and Android/obb.
+- [x] Document Android 11+ picker restrictions, including internal/SD storage roots, Downloads, Android/data, and Android/obb.
 
 Do not broaden the work into a general storage rewrite. Keep each integration change small enough to review and rebase cleanly against upstream Fossify updates.

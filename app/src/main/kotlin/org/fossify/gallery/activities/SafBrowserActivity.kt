@@ -95,17 +95,26 @@ class SafBrowserActivity : SimpleActivity() {
                         targetDocumentId
                     )
                 }
-                TransferAction.MOVE -> runItemMutation(R.string.saf_item_moved) {
-                    operations.moveDocument(
-                        treeUri,
-                        transfer.documentId,
-                        transfer.sourceParentDocumentId,
-                        transfer.displayName,
-                        transfer.mimeType,
-                        transfer.isDirectory,
-                        targetTreeUri,
-                        targetDocumentId
-                    )
+                TransferAction.MOVE -> {
+                    getAlertDialogBuilder()
+                        .setTitle(R.string.saf_move_to)
+                        .setMessage(getString(R.string.saf_move_confirmation, transfer.displayName))
+                        .setPositiveButton(R.string.saf_move_to) { _, _ ->
+                            runItemMutation(R.string.saf_item_moved) {
+                                operations.moveDocument(
+                                    treeUri,
+                                    transfer.documentId,
+                                    transfer.sourceParentDocumentId,
+                                    transfer.displayName,
+                                    transfer.mimeType,
+                                    transfer.isDirectory,
+                                    targetTreeUri,
+                                    targetDocumentId
+                                )
+                            }
+                        }
+                        .setNegativeButton(org.fossify.commons.R.string.cancel, null)
+                        .show()
                 }
             }
         }
