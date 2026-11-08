@@ -10,7 +10,7 @@ This file tracks planned, fork-specific work. Keep entries here until the corres
 
 ## Android Storage Access Framework (SAF)
 
-**Status:** SAF source registration, on-demand browsing, provider-gated create/rename/delete, URI sharing, tiled image viewing, and available image details are implemented. Gallery-wide integration, cache invalidation, and further file operations remain planned. See [SAF support investigation](docs/SAF_SUPPORT.md) for architecture findings and implementation constraints.
+**Status:** SAF registration and on-demand browsing, a main-menu entry for saved roots, provider-gated create/rename/delete, native and stream-backed media copy/move, URI sharing, tiled image viewing, and available image details are implemented. Gallery-wide media integration, cache invalidation, multi-item editing, and recursive transfers remain planned. See [SAF support investigation](docs/SAF_SUPPORT.md) for architecture findings and implementation constraints.
 
 ### Change constraints
 

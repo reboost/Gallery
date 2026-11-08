@@ -1,6 +1,6 @@
 # Storage Access Framework (SAF) support
 
-**Status:** Implementation in progress on `feature/saf-support-plan`. Persistent tree registration, on-demand browsing, provider thumbnails, a URI-based image/video viewer with tiled image zoom and available EXIF details, and provider-gated create/rename/delete are implemented. Gallery-wide integration, cache invalidation, and other mutations remain planned.
+**Status:** Implementation in progress on `feature/saf-support-plan`. Persistent tree registration, direct main-menu access to saved roots, on-demand browsing, provider thumbnails, a URI-based image/video viewer with tiled image zoom and available EXIF details, provider-gated create/rename/delete, and native/stream-backed media copy/move are implemented. Gallery-wide media integration, cache invalidation, multi-item editing, and recursive transfers remain planned.
 
 ## Android 11+ tree-picker limits
 
