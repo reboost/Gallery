@@ -1,6 +1,19 @@
 # Storage Access Framework (SAF) support
 
-**Status:** Investigation and implementation proposal. No SAF implementation is included in this change.
+**Status:** Implementation in progress. The first additive foundation is on `feature/saf-support-plan`; it adds persistent tree-source registration and a Gallery-owned entry point. Read-only media enumeration and viewing integration are not implemented yet.
+
+## Implementation progress
+
+### Foundation increment
+
+- Added a Gallery-owned storage selector to the existing **Create new folder** entry point. Internal, SD Card, and the existing USB/OTG path continue through the original Commons file picker.
+- **Other locations…** launches `ACTION_OPEN_DOCUMENT_TREE`. Gallery persists only the exact returned tree URI and the read/write grant modes actually returned by Android; no prefix or ancestor grant is requested.
+- Saved roots are stored separately from path-based Gallery preferences. Their provider display names are labels only; the URI string remains the identity.
+- **Previously added locations** shows saved roots and distinguishes an unavailable/revoked grant from a read-only grant.
+- The provider source registry does not yet feed the Gallery media scanner. A selected saved root currently reports that provider media browsing is pending; it is not converted to a filesystem path, and no copy or mutation is attempted.
+- The original Commons file picker, folder creation dialog, MediaStore scanner, filesystem scanner, OTG scanner, media model, and Room schema remain unchanged.
+
+The storage-selection dialog itself is provided by the pinned `org.fossify:commons:7.1.3` dependency and has no extension point for additional choices. Rather than fork or copy the upstream file picker, this increment adds the selector at Gallery's existing folder-creation entry point and delegates all local paths back to the unchanged Commons picker. This keeps SAF changes additive and avoids maintaining a fork of an upstream-owned dialog.
 
 ## Goal
 

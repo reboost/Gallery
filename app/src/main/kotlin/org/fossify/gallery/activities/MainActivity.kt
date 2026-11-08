@@ -2,6 +2,7 @@ package org.fossify.gallery.activities
 
 import android.content.ClipData
 import android.content.Intent
+import android.content.ContentResolver
 import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
@@ -11,6 +12,7 @@ import android.provider.MediaStore.Video
 import android.view.ViewGroup
 import android.widget.RelativeLayout
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.recyclerview.widget.RecyclerView
 import org.fossify.commons.dialogs.CreateNewFolderDialog
 import org.fossify.commons.dialogs.FilePickerDialog
@@ -144,6 +146,9 @@ import org.fossify.gallery.interfaces.DirectoryOperationsListener
 import org.fossify.gallery.jobs.NewPhotoFetcher
 import org.fossify.gallery.models.Directory
 import org.fossify.gallery.models.Medium
+import org.fossify.gallery.saf.SafLocation
+import org.fossify.gallery.saf.SafLocationStore
+import org.fossify.gallery.saf.SafStoragePickerDialog
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileNotFoundException
@@ -197,6 +202,40 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
     private var mStoredPrimaryColor = 0
     private var mStoredStyleString = ""
     private val binding by viewBinding(ActivityMainBinding::inflate)
+
+    private val safTreePicker = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val data = result.data
+        val treeUri = data?.data
+        if (result.resultCode != Activity.RESULT_OK || treeUri == null) {
+            return@registerForActivityResult
+        }
+
+        val resultFlags = data.flags
+        val grantedFlags = resultFlags and (
+            ContentResolver.FLAG_GRANT_READ_URI_PERMISSION or ContentResolver.FLAG_GRANT_WRITE_URI_PERMISSION
+        )
+        if (resultFlags and Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION == 0 ||
+            grantedFlags and ContentResolver.FLAG_GRANT_READ_URI_PERMISSION == 0
+        ) {
+            toast(R.string.saf_persistable_read_permission_required)
+            return@registerForActivityResult
+        }
+
+        try {
+            contentResolver.takePersistableUriPermission(treeUri, grantedFlags)
+        } catch (e: SecurityException) {
+            showErrorToast(e)
+            return@registerForActivityResult
+        }
+
+        ensureBackgroundThread {
+            val displayName = SafLocationStore.queryDisplayName(contentResolver, treeUri)
+                ?: treeUri.lastPathSegment
+                ?: getString(R.string.other_locations)
+            SafLocationStore(this).add(treeUri, displayName, grantedFlags)
+            runOnUiThread { toast(R.string.saf_location_added) }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -901,7 +940,17 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
     }
 
     private fun createNewFolder() {
-        FilePickerDialog(this, internalStoragePath, false, config.shouldShowHidden, false, true) {
+        SafStoragePickerDialog(
+            activity = this,
+            locationStore = SafLocationStore(this),
+            onLocalStorageSelected = ::openLocalFolderPicker,
+            onOtherLocations = ::launchSafTreePicker,
+            onSafLocationSelected = ::showSafLocationStatus
+        ).show()
+    }
+
+    private fun openLocalFolderPicker(path: String) {
+        FilePickerDialog(this, path, false, config.shouldShowHidden, false, true) {
             CreateNewFolderDialog(this, it) {
                 config.tempFolderPath = it
                 ensureBackgroundThread {
@@ -909,6 +958,19 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
                 }
             }
         }
+    }
+
+    private fun launchSafTreePicker() {
+        val grantFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION or
+            Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+        safTreePicker.launch(Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).addFlags(grantFlags))
+    }
+
+    private fun showSafLocationStatus(location: SafLocation) {
+        toast(
+            if (location.hasReadAccess) R.string.saf_source_browsing_not_connected
+            else R.string.saf_location_unavailable
+        )
     }
 
     private fun changeColumnCount() {

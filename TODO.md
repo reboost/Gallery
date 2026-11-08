@@ -4,7 +4,7 @@ This file tracks planned, fork-specific work. Keep entries here until the corres
 
 ## Android Storage Access Framework (SAF)
 
-**Status:** Planned. See [SAF support investigation](docs/SAF_SUPPORT.md) for upstream research, architecture findings, UI flow, and implementation constraints.
+**Status:** Foundation in progress. The exact tree-grant registry and additive storage-selection entry point are implemented; provider media browsing and operations remain planned. See [SAF support investigation](docs/SAF_SUPPORT.md) for architecture findings and implementation constraints.
 
 ### Change constraints
 
@@ -17,15 +17,15 @@ This file tracks planned, fork-specific work. Keep entries here until the corres
 
 ### Agreed entry point and user flow
 
-- [ ] Extend the existing **Select storage** dialog opened from **Create new folder** with **Other locations…**; keep **Internal** and **SD Card** unchanged.
-- [ ] Launch the Android system folder picker from **Other locations…** using ACTION_OPEN_DOCUMENT_TREE. Persist the exact tree grant returned by Android.
-- [ ] Show successfully added roots in a **Previously added locations** section so they can be selected again without reopening the picker.
+- [x] Add a Gallery-owned storage selector at **Create new folder** with **Other locations…**; keep the existing Internal/SD/USB path flow delegated to Commons unchanged.
+- [x] Launch the Android system folder picker from **Other locations…** using ACTION_OPEN_DOCUMENT_TREE. Persist the exact returned tree URI and only its granted read/write modes.
+- [x] Show saved roots in **Previously added locations**, identifying revoked/unavailable grants and read-only roots without using display names as IDs.
 - [ ] Register a selected tree as a Gallery source as well as a selectable location; selecting it must not copy files or pretend the provider has a filesystem path.
 - [ ] Allow read-only roots to be browsed. Enable folder creation or other mutations only when the selected document advertises the required capability.
 
 ### Implementation work
 
-- [ ] Add a small SAF source model/store for the selected tree URI, display label, and persisted grant modes; handle removal, revoked permissions, and unavailable providers.
+- [x] Add a small SAF source model/store for the selected tree URI, provider display label, and granted modes; [ ] expose source removal and permission recovery in the UI.
 - [ ] Add provider-backed folder and media enumeration using DocumentsContract metadata, performed in cancellable background work and loaded on demand.
 - [ ] Expose SAF media through a narrow adapter at the existing Gallery boundary without replacing or rewriting the local MediaStore/filesystem pipeline.
 - [ ] Load image/video content, thumbnails, and EXIF metadata through content URIs, with source-aware cache identity and invalidation.

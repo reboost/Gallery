@@ -12,6 +12,15 @@
     <string name="all_folders">All folders</string>
     <string name="folder_view">Switch to folder view</string>
     <string name="other_folder">Other folder</string>
+    <string name="other_locations">Other locations…</string>
+    <string name="previously_added_locations">Previously added locations</string>
+    <string name="no_previously_added_locations">No locations have been added yet</string>
+    <string name="saf_unavailable">Unavailable</string>
+    <string name="saf_read_only">Read-only</string>
+    <string name="saf_persistable_read_permission_required">The selected location did not grant persistent read access</string>
+    <string name="saf_location_added">Location added to Gallery sources</string>
+    <string name="saf_location_unavailable">This location is unavailable or its access permission was revoked</string>
+    <string name="saf_source_browsing_not_connected">This location is saved as a Gallery source. Provider media browsing is not connected yet.</string>
     <string name="show_on_map">Show on map</string>
     <string name="unknown_location">Unknown location</string>
     <string name="volume">Volume</string>
