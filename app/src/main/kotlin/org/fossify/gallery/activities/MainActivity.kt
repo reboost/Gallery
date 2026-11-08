@@ -2,7 +2,7 @@ package org.fossify.gallery.activities
 
 import android.content.ClipData
 import android.content.Intent
-import android.content.ContentResolver
+import android.app.Activity
 import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
@@ -212,10 +212,10 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
 
         val resultFlags = data.flags
         val grantedFlags = resultFlags and (
-            ContentResolver.FLAG_GRANT_READ_URI_PERMISSION or ContentResolver.FLAG_GRANT_WRITE_URI_PERMISSION
+            Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
         )
         if (resultFlags and Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION == 0 ||
-            grantedFlags and ContentResolver.FLAG_GRANT_READ_URI_PERMISSION == 0
+            grantedFlags and Intent.FLAG_GRANT_READ_URI_PERMISSION == 0
         ) {
             toast(R.string.saf_persistable_read_permission_required)
             return@registerForActivityResult

@@ -2,6 +2,7 @@ package org.fossify.gallery.saf
 
 import android.content.ContentResolver
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.provider.DocumentsContract
 import android.provider.DocumentsContract.Document
@@ -14,10 +15,10 @@ data class SafLocation(
     val activeFlags: Int
 ) {
     val hasReadAccess: Boolean
-        get() = activeFlags and ContentResolver.FLAG_GRANT_READ_URI_PERMISSION != 0
+        get() = activeFlags and Intent.FLAG_GRANT_READ_URI_PERMISSION != 0
 
     val hasWriteAccess: Boolean
-        get() = activeFlags and ContentResolver.FLAG_GRANT_WRITE_URI_PERMISSION != 0
+        get() = activeFlags and Intent.FLAG_GRANT_WRITE_URI_PERMISSION != 0
 }
 
 /**
@@ -50,8 +51,8 @@ class SafLocationStore(context: Context) {
             val activeFlags = if (persisted == null) {
                 0
             } else {
-                (if (persisted.isReadPermission) ContentResolver.FLAG_GRANT_READ_URI_PERMISSION else 0) or
-                    (if (persisted.isWritePermission) ContentResolver.FLAG_GRANT_WRITE_URI_PERMISSION else 0)
+                (if (persisted.isReadPermission) Intent.FLAG_GRANT_READ_URI_PERMISSION else 0) or
+                    (if (persisted.isWritePermission) Intent.FLAG_GRANT_WRITE_URI_PERMISSION else 0)
             } and grantedFlags
 
             SafLocation(
@@ -70,8 +71,8 @@ class SafLocationStore(context: Context) {
         resolver.persistedUriPermissions
             .filter { it.uri == treeUri }
             .forEach { permission ->
-                val flags = (if (permission.isReadPermission) ContentResolver.FLAG_GRANT_READ_URI_PERMISSION else 0) or
-                    (if (permission.isWritePermission) ContentResolver.FLAG_GRANT_WRITE_URI_PERMISSION else 0)
+                val flags = (if (permission.isReadPermission) Intent.FLAG_GRANT_READ_URI_PERMISSION else 0) or
+                    (if (permission.isWritePermission) Intent.FLAG_GRANT_WRITE_URI_PERMISSION else 0)
                 if (flags != 0) {
                     runCatching { resolver.releasePersistableUriPermission(treeUri, flags) }
                 }
@@ -93,7 +94,7 @@ class SafLocationStore(context: Context) {
         private const val KEY_NAME = "name"
         private const val KEY_FLAGS = "flags"
         private val READ_WRITE_FLAGS =
-            ContentResolver.FLAG_GRANT_READ_URI_PERMISSION or ContentResolver.FLAG_GRANT_WRITE_URI_PERMISSION
+            Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
 
         fun queryDisplayName(contentResolver: ContentResolver, treeUri: Uri): String? = runCatching {
             val documentId = DocumentsContract.getTreeDocumentId(treeUri)
