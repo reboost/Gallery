@@ -28,7 +28,7 @@ This file tracks planned, fork-specific work. Keep entries here until the corres
 - [x] Show saved roots in **Previously added locations**, identifying revoked/unavailable grants and read-only roots without using display names as IDs.
 - [x] Persist each selected tree as a Gallery source record separately from the local destination path; selecting it does not copy files or put a content URI in a filesystem path.
 - [ ] Connect registered SAF sources to Gallery media discovery and album navigation.
-- [x] Allow read-only roots to be browsed in a separate SAF browser. Folder creation and other mutations remain unavailable until capability-aware operations are implemented.
+- [x] Allow read-only roots to be browsed in a separate SAF browser; offer folder creation, rename, and delete only when the saved write grant and provider flags permit each operation.
 
 ### Implementation work
 
@@ -41,7 +41,8 @@ This file tracks planned, fork-specific work. Keep entries here until the corres
 - [x] Add capability-aware rename and delete actions, shown only when the selected document advertises the corresponding provider flags.
 - [ ] Add provider-backed file writes and copy/move behavior only where supported by the provider; keep unsupported actions unavailable.
 - [ ] Integrate SAF items with Gallery's main album/media UI, including search, sorting/grouping, favorites, filters, and album navigation.
-- [ ] Add provider-aware sharing, selection, and editing only where URI-based APIs support them.
+- [x] Add URI-granted sharing from the SAF media viewer without converting document URIs to filesystem paths.
+- [ ] Add provider-aware multi-item selection and editing only where URI-based APIs support them.
 - [ ] Verify local media behavior remains unchanged and exercise removable/USB, SMB/CIFS, WebDAV, rclone, cloud, read-only, revoked/offline, and large-tree scenarios.
 - [ ] Document Android 11+ picker restrictions, including internal/SD storage roots, Downloads, Android/data, and Android/obb.
 

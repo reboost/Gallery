@@ -6,7 +6,6 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.CancellationSignal
 import android.provider.DocumentsContract
-import android.provider.DocumentsContract.Document
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup

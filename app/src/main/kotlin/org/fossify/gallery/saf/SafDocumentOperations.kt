@@ -24,7 +24,7 @@ sealed interface SafItemMutationResult {
 /** Provider operations are gated by the capabilities advertised for the target document. */
 class SafDocumentOperations(private val contentResolver: ContentResolver) {
     fun supportsCreate(treeUri: Uri, parentDocumentId: String): Boolean = runCatching {
-        queryDirectoryFlags(treeUri, parentDocumentId)
+        queryDocumentFlags(treeUri, parentDocumentId)
             ?.let { it and Document.FLAG_DIR_SUPPORTS_CREATE != 0 }
             ?: false
     }.getOrDefault(false)
@@ -40,7 +40,7 @@ class SafDocumentOperations(private val contentResolver: ContentResolver) {
         }
 
         return try {
-            val flags = queryDirectoryFlags(treeUri, parentDocumentId)
+            val flags = queryDocumentFlags(treeUri, parentDocumentId)
                 ?: return SafCreateFolderResult.Unavailable
             if (flags and Document.FLAG_DIR_SUPPORTS_CREATE == 0) {
                 return SafCreateFolderResult.Unsupported
@@ -73,7 +73,7 @@ class SafDocumentOperations(private val contentResolver: ContentResolver) {
         }
 
         return try {
-            val flags = queryDirectoryFlags(treeUri, documentId)
+            val flags = queryDocumentFlags(treeUri, documentId)
                 ?: return SafItemMutationResult.Unavailable
             if (flags and Document.FLAG_SUPPORTS_RENAME == 0) {
                 return SafItemMutationResult.Unsupported
@@ -94,7 +94,7 @@ class SafDocumentOperations(private val contentResolver: ContentResolver) {
 
     fun deleteDocument(treeUri: Uri, documentId: String): SafItemMutationResult {
         return try {
-            val flags = queryDirectoryFlags(treeUri, documentId)
+            val flags = queryDocumentFlags(treeUri, documentId)
                 ?: return SafItemMutationResult.Unavailable
             if (flags and Document.FLAG_SUPPORTS_DELETE == 0) {
                 return SafItemMutationResult.Unsupported
@@ -113,7 +113,7 @@ class SafDocumentOperations(private val contentResolver: ContentResolver) {
         }
     }
 
-    private fun queryDirectoryFlags(treeUri: Uri, documentId: String): Int? {
+    private fun queryDocumentFlags(treeUri: Uri, documentId: String): Int? {
         val documentUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, documentId)
         return contentResolver.query(
             documentUri,

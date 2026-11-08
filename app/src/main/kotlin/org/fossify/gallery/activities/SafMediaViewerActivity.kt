@@ -1,5 +1,6 @@
 package org.fossify.gallery.activities
 
+import android.content.ClipData
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
@@ -25,18 +26,26 @@ class SafMediaViewerActivity : SimpleActivity() {
     private lateinit var image: ImageView
     private lateinit var video: VideoView
     private lateinit var loading: ProgressBar
+    private lateinit var documentUri: android.net.Uri
+    private lateinit var displayName: String
+    private lateinit var mimeType: String
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val documentUri = intent.data ?: run {
+        documentUri = intent.data ?: run {
             finish()
             return
         }
-        buildContent()
-        findViewById<TextView>(VIEWER_TITLE).text = intent.getStringExtra(EXTRA_NAME).orEmpty()
-        findViewById<View>(VIEWER_BACK).setOnClickListener { finish() }
-
+        displayName = intent.getStringExtra(EXTRA_NAME).orEmpty()
         val mediaType = intent.getStringExtra(EXTRA_TYPE)
+        mimeType = intent.getStringExtra(EXTRA_MIME_TYPE)?.takeIf {
+            it.startsWith(if (mediaType == SafMediaType.IMAGE.name) "image/" else "video/", true)
+        } ?: if (mediaType == SafMediaType.IMAGE.name) "image/*" else "video/*"
+        buildContent()
+        findViewById<TextView>(VIEWER_TITLE).text = displayName
+        findViewById<View>(VIEWER_BACK).setOnClickListener { finish() }
+        findViewById<View>(VIEWER_SHARE).setOnClickListener { shareMedia() }
+
         val size = intent.getLongExtra(EXTRA_SIZE, -1L)
         val modified = intent.getLongExtra(EXTRA_MODIFIED, 0L)
         when (mediaType) {
@@ -93,6 +102,17 @@ class SafMediaViewerActivity : SimpleActivity() {
             ellipsize = android.text.TextUtils.TruncateAt.END
         }
         header.addView(title, LinearLayout.LayoutParams(0, -2, 1f))
+        val share = TextView(this).apply {
+            id = VIEWER_SHARE
+            text = getString(R.string.saf_share)
+            setTextColor(Color.WHITE)
+            textSize = 14f
+            gravity = Gravity.CENTER
+            setPadding(12.dp(), 0, 12.dp(), 0)
+            isClickable = true
+            isFocusable = true
+        }
+        header.addView(share, LinearLayout.LayoutParams(-2, 56.dp()))
         val frame = FrameLayout(this)
         image = ImageView(this).apply {
             scaleType = ImageView.ScaleType.FIT_CENTER
@@ -108,6 +128,16 @@ class SafMediaViewerActivity : SimpleActivity() {
         setContentView(root)
     }
 
+    private fun shareMedia() {
+        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            type = mimeType
+            putExtra(Intent.EXTRA_STREAM, documentUri)
+            clipData = ClipData.newUri(contentResolver, displayName, documentUri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        startActivity(Intent.createChooser(shareIntent, getString(R.string.saf_share)))
+    }
+
     override fun onDestroy() {
         if (::video.isInitialized) video.stopPlayback()
         if (::image.isInitialized) Glide.with(this).clear(image)
@@ -121,14 +151,17 @@ class SafMediaViewerActivity : SimpleActivity() {
         private const val EXTRA_TYPE = "media_type"
         private const val EXTRA_SIZE = "media_size"
         private const val EXTRA_MODIFIED = "media_modified"
+        private const val EXTRA_MIME_TYPE = "mime_type"
         private const val VIEWER_TITLE = 1001
         private const val VIEWER_BACK = 1002
+        private const val VIEWER_SHARE = 1003
 
         fun createIntent(context: Context, item: SafBrowserItem.Media) =
             Intent(context, SafMediaViewerActivity::class.java)
                 .setData(item.documentUri)
                 .putExtra(EXTRA_NAME, item.displayName)
                 .putExtra(EXTRA_TYPE, item.type.name)
+                .putExtra(EXTRA_MIME_TYPE, item.mimeType)
                 .putExtra(EXTRA_SIZE, item.size ?: -1L)
                 .putExtra(EXTRA_MODIFIED, item.lastModified ?: 0L)
                 .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
