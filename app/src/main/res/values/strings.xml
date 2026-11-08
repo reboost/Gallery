@@ -21,6 +21,9 @@
     <string name="saf_location_added">Location added to Gallery sources</string>
     <string name="saf_location_unavailable">This location is unavailable or its access permission was revoked</string>
     <string name="saf_source_browsing_not_connected">This location is saved as a Gallery source. Provider media browsing is not connected yet.</string>
+    <string name="saf_use_location">Use location</string>
+    <string name="saf_remove_location">Remove location</string>
+    <string name="saf_location_removed">Location removed and its persisted access released</string>
     <string name="show_on_map">Show on map</string>
     <string name="unknown_location">Unknown location</string>
     <string name="volume">Volume</string>

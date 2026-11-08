@@ -71,14 +71,29 @@ class SafStoragePickerDialog(
             }
         }.toTypedArray()
 
+        var selectedIndex = -1
         activity.getAlertDialogBuilder()
             .setTitle(R.string.previously_added_locations)
-            .setItems(labels) { _, index ->
-                val location = locations[index]
-                if (location.hasReadAccess) {
+            .setSingleChoiceItems(labels, selectedIndex) { _, index ->
+                selectedIndex = index
+            }
+            .setPositiveButton(R.string.saf_use_location) { _, _ ->
+                val location = locations.getOrNull(selectedIndex)
+                if (location == null) {
+                    activity.toast(R.string.no_previously_added_locations)
+                } else if (location.hasReadAccess) {
                     onSafLocationSelected(location)
                 } else {
                     activity.toast(R.string.saf_location_unavailable)
+                }
+            }
+            .setNeutralButton(R.string.saf_remove_location) { _, _ ->
+                val location = locations.getOrNull(selectedIndex)
+                if (location == null) {
+                    activity.toast(R.string.no_previously_added_locations)
+                } else {
+                    locationStore.remove(location.treeUri)
+                    activity.toast(R.string.saf_location_removed)
                 }
             }
             .setNegativeButton(org.fossify.commons.R.string.cancel, null)

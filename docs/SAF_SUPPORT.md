@@ -9,7 +9,7 @@
 - Added a Gallery-owned storage selector to the existing **Create new folder** entry point. Internal, SD Card, and the existing USB/OTG path continue through the original Commons file picker.
 - **Other locations…** launches `ACTION_OPEN_DOCUMENT_TREE`. Gallery persists only the exact returned tree URI and the read/write grant modes actually returned by Android; no prefix or ancestor grant is requested.
 - Saved roots are stored separately from path-based Gallery preferences. Their provider display names are labels only; the URI string remains the identity.
-- **Previously added locations** shows saved roots and distinguishes an unavailable/revoked grant from a read-only grant.
+- **Previously added locations** shows saved roots, distinguishes unavailable/revoked grants from read-only access, reuses a saved root without opening the system picker, and can remove a root while releasing only its exact persisted URI grant.
 - The provider source registry does not yet feed the Gallery media scanner. A selected saved root currently reports that provider media browsing is pending; it is not converted to a filesystem path, and no copy or mutation is attempted.
 - The original Commons file picker, folder creation dialog, MediaStore scanner, filesystem scanner, OTG scanner, media model, and Room schema remain unchanged.
 
