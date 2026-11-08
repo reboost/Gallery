@@ -38,7 +38,8 @@ This file tracks planned, fork-specific work. Keep entries here until the corres
 - [x] Load SAF thumbnails and open images/videos through content URIs with URI/metadata-based thumbnail cache signatures.
 - [ ] Add provider-backed dimensions and EXIF details, high-resolution/deep-zoom image viewing, and source-aware invalidation after future mutations.
 - [x] Add provider-capability-aware folder creation, gated by the exact saved write grant and `FLAG_DIR_SUPPORTS_CREATE` on the current directory.
-- [ ] Add capability-aware write, rename, delete, and copy/move behavior only where supported by the provider; keep unsupported actions unavailable.
+- [x] Add capability-aware rename and delete actions, shown only when the selected document advertises the corresponding provider flags.
+- [ ] Add provider-backed file writes and copy/move behavior only where supported by the provider; keep unsupported actions unavailable.
 - [ ] Integrate SAF items with Gallery's main album/media UI, including search, sorting/grouping, favorites, filters, and album navigation.
 - [ ] Add provider-aware sharing, selection, and editing only where URI-based APIs support them.
 - [ ] Verify local media behavior remains unchanged and exercise removable/USB, SMB/CIFS, WebDAV, rclone, cloud, read-only, revoked/offline, and large-tree scenarios.

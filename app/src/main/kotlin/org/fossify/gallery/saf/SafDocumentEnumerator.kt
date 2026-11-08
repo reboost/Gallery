@@ -11,12 +11,17 @@ sealed interface SafBrowserItem {
     val documentId: String
     val displayName: String
     val documentUri: Uri
+    val flags: Int
+    val supportsRename: Boolean
+        get() = flags and Document.FLAG_SUPPORTS_RENAME != 0
+    val supportsDelete: Boolean
+        get() = flags and Document.FLAG_SUPPORTS_DELETE != 0
 
     data class Directory(
         override val documentId: String,
         override val displayName: String,
         override val documentUri: Uri,
-        val flags: Int
+        override val flags: Int
     ) : SafBrowserItem {
         val supportsCreate: Boolean
             get() = flags and Document.FLAG_DIR_SUPPORTS_CREATE != 0
@@ -26,6 +31,7 @@ sealed interface SafBrowserItem {
         override val documentId: String,
         override val displayName: String,
         override val documentUri: Uri,
+        override val flags: Int,
         val mimeType: String?,
         val size: Long?,
         val lastModified: Long?,
@@ -91,11 +97,11 @@ class SafDocumentEnumerator(private val contentResolver: ContentResolver) {
                         .takeIf { it >= 0 && !resultCursor.isNull(it) }
                         ?.let(resultCursor::getString)
                     val documentUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, documentId)
+                    val flags = flagsIndex
+                        .takeIf { it >= 0 && !resultCursor.isNull(it) }
+                        ?.let(resultCursor::getInt)
+                        ?: 0
                     if (mimeType == Document.MIME_TYPE_DIR) {
-                        val flags = flagsIndex
-                            .takeIf { it >= 0 && !resultCursor.isNull(it) }
-                            ?.let(resultCursor::getInt)
-                            ?: 0
                         documents.add(SafBrowserItem.Directory(documentId, displayName, documentUri, flags))
                     } else {
                         val mediaType = classifyMedia(mimeType, displayName) ?: continue
@@ -109,7 +115,7 @@ class SafDocumentEnumerator(private val contentResolver: ContentResolver) {
                             ?.takeIf { it > 0L }
                         documents.add(
                             SafBrowserItem.Media(
-                                documentId, displayName, documentUri, mimeType, size, lastModified, mediaType
+                                documentId, displayName, documentUri, flags, mimeType, size, lastModified, mediaType
                             )
                         )
                     }

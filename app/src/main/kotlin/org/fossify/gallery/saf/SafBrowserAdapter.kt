@@ -15,7 +15,8 @@ import org.fossify.gallery.R
 
 class SafBrowserAdapter(
     private val context: Context,
-    private val onClick: (SafBrowserItem) -> Unit
+    private val onClick: (SafBrowserItem) -> Unit,
+    private val onLongClick: (SafBrowserItem) -> Unit
 ) : RecyclerView.Adapter<SafBrowserAdapter.ViewHolder>() {
     private val items = ArrayList<SafBrowserItem>()
 
@@ -78,6 +79,10 @@ class SafBrowserAdapter(
         fun bind(item: SafBrowserItem) {
             name.text = item.displayName
             row.setOnClickListener { onClick(item) }
+            row.setOnLongClickListener {
+                onLongClick(item)
+                true
+            }
             when (item) {
                 is SafBrowserItem.Directory -> {
                     Glide.with(image).clear(image)

@@ -27,6 +27,13 @@
     <string name="saf_folder_create_unsupported">This location does not support creating folders</string>
     <string name="saf_folder_create_failed">Could not create folder</string>
     <string name="saf_folder_name_invalid">Enter a valid folder name</string>
+    <string name="saf_rename">Rename</string>
+    <string name="saf_delete">Delete</string>
+    <string name="saf_delete_confirmation">Delete “%1$s”?</string>
+    <string name="saf_item_renamed">Item renamed</string>
+    <string name="saf_item_deleted">Item deleted</string>
+    <string name="saf_operation_unsupported">This provider does not support that operation</string>
+    <string name="saf_operation_failed">Could not complete the operation</string>
     <string name="saf_folder">Folder</string>
     <string name="saf_image">Image</string>
     <string name="saf_video">Video</string>

@@ -6,6 +6,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.CancellationSignal
 import android.provider.DocumentsContract
+import android.provider.DocumentsContract.Document
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -27,6 +28,7 @@ import org.fossify.gallery.saf.SafBrowserItem
 import org.fossify.gallery.saf.SafDocumentEnumerator
 import org.fossify.gallery.saf.SafDocumentOperations
 import org.fossify.gallery.saf.SafCreateFolderResult
+import org.fossify.gallery.saf.SafItemMutationResult
 import org.fossify.gallery.saf.SafLocation
 import org.fossify.gallery.saf.SafLocationStore
 import java.util.concurrent.ExecutorService
@@ -76,7 +78,7 @@ class SafBrowserActivity : SimpleActivity() {
 
         executor = Executors.newSingleThreadExecutor()
         buildContent()
-        adapter = SafBrowserAdapter(this, ::onItemClicked)
+        adapter = SafBrowserAdapter(this, ::onItemClicked, ::onItemLongClicked)
         recyclerView.layoutManager = LinearLayoutManager(this)
         recyclerView.adapter = adapter
         refreshLayout.setOnRefreshListener { loadChildren() }
@@ -224,6 +226,82 @@ class SafBrowserActivity : SimpleActivity() {
                     SafCreateFolderResult.Unsupported -> toast(R.string.saf_folder_create_unsupported)
                     SafCreateFolderResult.PermissionRevoked -> toast(R.string.saf_location_unavailable)
                     SafCreateFolderResult.Unavailable -> toast(R.string.saf_folder_create_failed)
+                }
+            }
+        }
+    }
+
+    private enum class ItemAction {
+        RENAME,
+        DELETE
+    }
+
+    private fun onItemLongClicked(item: SafBrowserItem) {
+        if (!location.hasWriteAccess) return
+        val actions = buildList {
+            if (item.supportsRename) add(ItemAction.RENAME)
+            if (item.supportsDelete) add(ItemAction.DELETE)
+        }
+        if (actions.isEmpty()) return
+
+        val labels = actions.map {
+            getString(if (it == ItemAction.RENAME) R.string.saf_rename else R.string.saf_delete)
+        }.toTypedArray()
+        getAlertDialogBuilder()
+            .setItems(labels) { _, index ->
+                when (actions[index]) {
+                    ItemAction.RENAME -> promptRename(item)
+                    ItemAction.DELETE -> confirmDelete(item)
+                }
+            }
+            .show()
+    }
+
+    private fun promptRename(item: SafBrowserItem) {
+        val input = EditText(this).apply {
+            setText(item.displayName)
+            setSelection(text.length)
+        }
+        getAlertDialogBuilder()
+            .setTitle(R.string.saf_rename)
+            .setView(input)
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                runItemMutation(R.string.saf_item_renamed) {
+                    SafDocumentOperations(contentResolver).renameDocument(treeUri, item.documentId, input.text.toString())
+                }
+            }
+            .setNegativeButton(org.fossify.commons.R.string.cancel, null)
+            .show()
+    }
+
+    private fun confirmDelete(item: SafBrowserItem) {
+        getAlertDialogBuilder()
+            .setTitle(R.string.saf_delete)
+            .setMessage(getString(R.string.saf_delete_confirmation, item.displayName))
+            .setPositiveButton(R.string.saf_delete) { _, _ ->
+                runItemMutation(R.string.saf_item_deleted) {
+                    SafDocumentOperations(contentResolver).deleteDocument(treeUri, item.documentId)
+                }
+            }
+            .setNegativeButton(org.fossify.commons.R.string.cancel, null)
+            .show()
+    }
+
+    private fun runItemMutation(successMessage: Int, operation: () -> SafItemMutationResult) {
+        if (!location.hasWriteAccess || !::executor.isInitialized) return
+        executor.submit {
+            val result = operation()
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                when (result) {
+                    SafItemMutationResult.Completed -> {
+                        toast(successMessage)
+                        loadChildren()
+                    }
+                    SafItemMutationResult.InvalidName -> toast(R.string.saf_folder_name_invalid)
+                    SafItemMutationResult.Unsupported -> toast(R.string.saf_operation_unsupported)
+                    SafItemMutationResult.PermissionRevoked -> toast(R.string.saf_location_unavailable)
+                    SafItemMutationResult.Unavailable -> toast(R.string.saf_operation_failed)
                 }
             }
         }
