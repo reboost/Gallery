@@ -2,9 +2,15 @@
 
 This file tracks planned, fork-specific work. Keep entries here until the corresponding behavior is implemented and verified.
 
+## Repository workflow
+
+- Never create, open, or use a pull request for this project at any stage. Work and commit directly on the designated feature branch.
+- Verify changes using push-triggered GitHub Actions and direct branch/commit inspection. Do not introduce a PR-based handoff or validation requirement.
+- Do not merge into `main` without explicit user authorization.
+
 ## Android Storage Access Framework (SAF)
 
-**Status:** Foundation in progress. The exact tree-grant registry and additive storage-selection entry point are implemented; provider media browsing and operations remain planned. See [SAF support investigation](docs/SAF_SUPPORT.md) for architecture findings and implementation constraints.
+**Status:** Read-only browsing in progress. Tree-grant persistence, saved-location management, on-demand provider browsing, thumbnails, and a separate URI-based viewer are implemented; advanced metadata and mutations remain planned. See [SAF support investigation](docs/SAF_SUPPORT.md) for architecture findings and implementation constraints.
 
 ### Change constraints
 
@@ -22,14 +28,15 @@ This file tracks planned, fork-specific work. Keep entries here until the corres
 - [x] Show saved roots in **Previously added locations**, identifying revoked/unavailable grants and read-only roots without using display names as IDs.
 - [x] Persist each selected tree as a Gallery source record separately from the local destination path; selecting it does not copy files or put a content URI in a filesystem path.
 - [ ] Connect registered SAF sources to Gallery media discovery and album navigation.
-- [ ] Allow read-only roots to be browsed. Enable folder creation or other mutations only when the selected document advertises the required capability.
+- [x] Allow read-only roots to be browsed in a separate SAF browser. Folder creation and other mutations remain unavailable until capability-aware operations are implemented.
 
 ### Implementation work
 
 - [x] Add a small SAF source model/store for the selected tree URI, provider display label, and granted modes, with exact-grant removal and UI recovery by re-adding a source after revocation.
-- [ ] Add provider-backed folder and media enumeration using DocumentsContract metadata, performed in cancellable background work and loaded on demand.
-- [ ] Expose SAF media through a narrow adapter at the existing Gallery boundary without replacing or rewriting the local MediaStore/filesystem pipeline.
-- [ ] Load image/video content, thumbnails, and EXIF metadata through content URIs, with source-aware cache identity and invalidation.
+- [x] Add provider-backed immediate-child enumeration using DocumentsContract metadata, cancellable provider queries, and on-demand folder navigation.
+- [x] Expose SAF roots through a separate read-only browser and item adapter without replacing or rewriting the local MediaStore/filesystem pipeline.
+- [x] Load SAF thumbnails and open images/videos through content URIs with URI/metadata-based thumbnail cache signatures.
+- [ ] Add provider-backed dimensions and EXIF details, plus source-aware invalidation after future mutations.
 - [ ] Add capability-aware create, write, rename, delete, and copy/move behavior only where supported by the provider; keep unsupported actions unavailable.
 - [ ] Verify local media behavior remains unchanged and exercise removable/USB, SMB/CIFS, WebDAV, rclone, cloud, read-only, revoked/offline, and large-tree scenarios.
 - [ ] Document Android 11+ picker restrictions, including internal/SD storage roots, Downloads, Android/data, and Android/obb.

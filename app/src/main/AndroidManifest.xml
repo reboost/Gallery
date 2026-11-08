@@ -157,6 +157,18 @@
         </activity>
 
         <activity
+            android:name=".activities.SafBrowserActivity"
+            android:exported="false"
+            android:label="@string/other_locations"
+            android:parentActivityName=".activities.MainActivity" />
+
+        <activity
+            android:name=".activities.SafMediaViewerActivity"
+            android:configChanges="orientation|keyboardHidden|screenSize"
+            android:exported="false"
+            android:parentActivityName=".activities.SafBrowserActivity" />
+
+        <activity
             android:name=".activities.PhotoVideoActivity"
             android:configChanges="orientation|keyboardHidden|screenSize"
             android:exported="false"

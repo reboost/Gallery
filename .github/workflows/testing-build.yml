@@ -1,9 +1,8 @@
-name: Testing build (on PR)
+name: Testing build (feature branch)
 
 on:
-    pull_request:
-        branches: [main]
-        types: [labeled, opened, synchronize, reopened]
+    push:
+        branches: [feature/saf-support-plan]
         paths-ignore:
             - ".github/**"
             - "CHANGELOG.md"

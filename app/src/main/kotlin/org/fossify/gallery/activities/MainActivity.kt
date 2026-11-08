@@ -945,7 +945,7 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
             locationStore = SafLocationStore(this),
             onLocalStorageSelected = ::openLocalFolderPicker,
             onOtherLocations = ::launchSafTreePicker,
-            onSafLocationSelected = ::showSafLocationStatus
+            onSafLocationSelected = ::openSafLocation
         ).show()
     }
 
@@ -966,11 +966,8 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
         safTreePicker.launch(Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).addFlags(grantFlags))
     }
 
-    private fun showSafLocationStatus(location: SafLocation) {
-        toast(
-            if (location.hasReadAccess) R.string.saf_source_browsing_not_connected
-            else R.string.saf_location_unavailable
-        )
+    private fun openSafLocation(location: SafLocation) {
+        startActivity(SafBrowserActivity.createIntent(this, location))
     }
 
     private fun changeColumnCount() {

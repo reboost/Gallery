@@ -1,6 +1,6 @@
 # Storage Access Framework (SAF) support
 
-**Status:** Implementation in progress. The first additive foundation is on `feature/saf-support-plan`; it adds persistent tree-source registration and a Gallery-owned entry point. Read-only media enumeration and viewing integration are not implemented yet.
+**Status:** Implementation in progress on `feature/saf-support-plan`. Persistent tree registration, on-demand read-only browsing, provider thumbnails, and a separate URI-based image/video viewer are implemented. Advanced metadata, Gallery-wide integration, and mutations remain planned.
 
 ## Implementation progress
 
@@ -10,11 +10,20 @@
 - **Other locations…** launches `ACTION_OPEN_DOCUMENT_TREE`. Gallery persists only the exact returned tree URI and the read/write grant modes actually returned by Android; no prefix or ancestor grant is requested.
 - Saved roots are stored separately from path-based Gallery preferences. Their provider display names are labels only; the URI string remains the identity.
 - **Previously added locations** shows saved roots, distinguishes unavailable/revoked grants from read-only access, reuses a saved root without opening the system picker, and can remove a root while releasing only its exact persisted URI grant.
-- The provider source registry does not yet feed the Gallery media scanner. A selected saved root currently reports that provider media browsing is pending; it is not converted to a filesystem path, and no copy or mutation is attempted.
+- Selecting a saved root opens a separate read-only SAF browser. It queries only that folder's immediate children and opens nested folders on demand; it does not recursively scan the tree at startup.
+- The browser classifies provider MIME types first, falls back to known image/video extensions, and tolerates missing size, last-modified, and capability metadata.
+- Provider thumbnails load through Glide using document URIs and cache signatures derived from URI, size, and last-modified metadata. A separate SAF viewer opens images through Glide and videos through Android's `VideoView`/`ContentResolver` path.
+- SAF entries remain `SafBrowserItem` values with opaque document IDs and document URIs. They are never converted into `Medium.path`, `Directory.path`, or Room rows; the existing path-oriented viewer is not used for SAF.
+- Enumeration runs on a dedicated background executor and passes a `CancellationSignal` into provider queries. Navigating to another folder or destroying the activity cancels the active query.
 - Viewer inspection confirmed that the existing Gallery flow is not a safe SAF adapter: `MediaActivity`/`MediaAdapter` and Room queries identify media by filesystem path, while the external-URI viewer path temporarily places a `content://` URI in `Medium.path` and attempts path resolution. The SAF integration must not reuse that shortcut; the browsing increment needs a distinct document identity and URI-based loading.
+- Browsing is read-only for this increment. Provider create/write/delete flags are retained for capability-aware operations later; no mutation is offered.
 - The original Commons file picker, folder creation dialog, MediaStore scanner, filesystem scanner, OTG scanner, media model, and Room schema remain unchanged.
 
 The storage-selection dialog itself is provided by the pinned `org.fossify:commons:7.1.3` dependency and has no extension point for additional choices. Rather than fork or copy the upstream file picker, this increment adds the selector at Gallery's existing folder-creation entry point and delegates all local paths back to the unchanged Commons picker. This keeps SAF changes additive and avoids maintaining a fork of an upstream-owned dialog.
+
+## Repository workflow
+
+This project does not use pull requests. **Never create or open a PR at any point in this project**, including draft or validation-only PRs. Implement and commit directly to the designated feature branch, verify with push-triggered GitHub Actions and direct commit/branch inspection, and never merge into `main` without explicit authorization.
 
 ## Goal
 

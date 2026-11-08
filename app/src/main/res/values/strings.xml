@@ -20,7 +20,12 @@
     <string name="saf_persistable_read_permission_required">The selected location did not grant persistent read access</string>
     <string name="saf_location_added">Location added to Gallery sources</string>
     <string name="saf_location_unavailable">This location is unavailable or its access permission was revoked</string>
-    <string name="saf_source_browsing_not_connected">This location is saved as a Gallery source. Provider media browsing is not connected yet.</string>
+    <string name="saf_folder">Folder</string>
+    <string name="saf_image">Image</string>
+    <string name="saf_video">Video</string>
+    <string name="saf_no_supported_media">No images or videos in this folder</string>
+    <string name="saf_provider_unavailable">This provider is unavailable or could not list this folder</string>
+    <string name="saf_media_open_failed">Could not open this media item</string>
     <string name="saf_use_location">Use location</string>
     <string name="saf_remove_location">Remove location</string>
     <string name="saf_location_removed">Location removed and its persisted access released</string>
